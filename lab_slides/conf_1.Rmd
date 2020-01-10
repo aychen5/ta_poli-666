@@ -1,0 +1,78 @@
+---
+title: "Conference 1"
+output: 
+  beamer_presentation:
+    theme: "Szeged"
+    colortheme: "beaver"
+    slide_level: 1
+# output:
+#   github_document:
+#     pandoc_args: [
+#     "--webtex"
+#     ]
+# option: --mathjax
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Welcome to POLI666!
+
+## Some admin first
+- Office Hours
+- Problem sets
+
+
+# Estimation
+
+- estimands, estimators, estimates
+- CLT, LLN
+- Properties of estimators
+
+----
+## CLT, LLN
+- What does CLT and LLN allow us to claim?
+
+----
+## Properties of estimators
+
+- Unbiasedness
+- Consistency
+- Efficiency
+
+----
+## Review of Potential Outcomes notation
+
+Are the following equalities always true?
+- $Y_{di} = Y_{i}(d)$
+- $\mathbb{E}[Y_{i}|D_i = 1] = \mathbb{E}[Y_{i}|D_i = 0]$
+- $Z_{D_ii} = Z_{i}(D_i, D_{i-1}, D_{i+1})$
+
+
+What is the difference between:
+- $Y_i(1) - Y_i(0)$ vs $\mathbb{E}[Y_i(1) - Y_i(0)]$
+
+
+# Randomization Inference
+
+<!-- <script src="//yihui.org/js/math-code.js"></script> -->
+<!-- <!-- Just one possible MathJax CDN below. You may use others. --> 
+<!-- <script async -->
+<!--   src="//mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML"> -->
+<!-- </script> -->
+<!-- Hi `$z = x + y$`. -->
+
+<!-- `$$a^2 + b^2 = c^2$$` -->
+
+<!-- `$$\begin{vmatrix}a & b\\ -->
+<!-- c & d -->
+<!-- \end{vmatrix}=ad-bc$$` -->
+
+
+
+<!-- \[\sum_i^{n=10}\\ -->
+<!-- \sum_i^{n=10}\\ -->
+<!-- \sum_i^{n=10} -->
+<!-- \] -->

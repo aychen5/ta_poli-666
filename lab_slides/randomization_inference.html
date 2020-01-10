@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Randomization Inference</title>
+
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <meta name="generator" content="pandoc" />
+
+
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+  <base target="_blank">
+
+  <script type="text/javascript">
+    var SLIDE_CONFIG = {
+      // Slide settings
+      settings: {
+                title: 'Randomization Inference',
+                        useBuilds: true,
+        usePrettify: true,
+        enableSlideAreas: true,
+        enableTouch: true,
+                      },
+
+      // Author information
+      presenters: [
+            {
+        name:  'Annie Chen' ,
+        company: '',
+        gplus: '',
+        twitter: '',
+        www: '',
+        github: ''
+      },
+            ]
+    };
+  </script>
+
+  <link href="randomization_inference_files/ioslides-13.5.1/fonts/fonts.css" rel="stylesheet" />
+  <link href="randomization_inference_files/ioslides-13.5.1/theme/css/default.css" rel="stylesheet" />
+  <link href="randomization_inference_files/ioslides-13.5.1/theme/css/phone.css" rel="stylesheet" />
+  <script src="randomization_inference_files/ioslides-13.5.1/js/modernizr.custom.45394.js"></script>
+  <script src="randomization_inference_files/ioslides-13.5.1/js/prettify/prettify.js"></script>
+  <script src="randomization_inference_files/ioslides-13.5.1/js/prettify/lang-r.js"></script>
+  <script src="randomization_inference_files/ioslides-13.5.1/js/prettify/lang-yaml.js"></script>
+  <script src="randomization_inference_files/ioslides-13.5.1/js/hammer.js"></script>
+  <script src="randomization_inference_files/ioslides-13.5.1/js/slide-controller.js"></script>
+  <script src="randomization_inference_files/ioslides-13.5.1/js/slide-deck.js"></script>
+
+  <style type="text/css">
+
+    b, strong {
+      font-weight: bold;
+    }
+
+    em {
+      font-style: italic;
+    }
+
+    summary {
+      display: list-item;
+    }
+
+    slides > slide {
+      -webkit-transition: all 0.4s ease-in-out;
+      -moz-transition: all 0.4s ease-in-out;
+      -o-transition: all 0.4s ease-in-out;
+      transition: all 0.4s ease-in-out;
+    }
+
+    .auto-fadein {
+      -webkit-transition: opacity 0.6s ease-in;
+      -webkit-transition-delay: 0.4s;
+      -moz-transition: opacity 0.6s ease-in 0.4s;
+      -o-transition: opacity 0.6s ease-in 0.4s;
+      transition: opacity 0.6s ease-in 0.4s;
+      opacity: 0;
+    }
+/* https://github.com/ropensci/plotly/pull/524#issuecomment-468142578 */
+slide:not(.current) .plotly.html-widget{
+  display: block;
+}
+
+  </style>
+
+  <link rel="stylesheet" href="style.css" type="text/css" />
+
+</head>
+
+<body style="opacity: 0">
+
+<slides class="layout-widescreen">
+
+  <slide class="title-slide segue nobackground">
+        <!-- The content of this hgroup is replaced programmatically through the slide_config.json. -->
+    <hgroup class="auto-fadein">
+      <h1 data-config-title><!-- populated from slide_config.json --></h1>
+      <h2 data-config-subtitle><!-- populated from slide_config.json --></h2>
+      <p data-config-presenter><!-- populated from slide_config.json --></p>
+            <p style="margin-top: 6px; margin-left: -2px;">1/3/2020</p>
+          </hgroup>
+  </slide>
+
+<style>
+div.footnotes {
+  position: absolute;
+  bottom: 0;
+  margin-bottom: 10px;
+  width: 80%;
+  font-size: 0.6em;
+}
+</style>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+<script>
+$(document).ready(function() {
+  $('slide:not(.backdrop):not(.title-slide)').append('<div class=\"footnotes\">');
+
+  $('footnote').each(function(index) {
+    var text  = $(this).html();
+    var fnNum = (index+1).toString();
+    $(this).html(fnNum.sup());
+    var footnote = fnNum + '. ' + text + '<br/>';
+    var oldContent = $(this).parents('slide').children('div.footnotes').html();
+    var newContent = oldContent + footnote;
+    $(this).parents('slide').children('div.footnotes').html(newContent);
+  });
+});
+</script>
+
+<slide class=""><hgroup><h2>Welcome to POLI666!</h2></hgroup><article  id="welcome-to-poli666">
+
+<ul class = 'build'>
+<li>Office hours</li>
+<li>Problem sets <!-- will try to get the grades back to you before your next one is due--></li>
+<li>other admin stuff?</li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2>Review of Sampling Distributions and Hypothesis Testing</h2></hgroup><article  id="review-of-sampling-distributions-and-hypothesis-testing">
+
+<p>Definitions:</p>
+
+<ul class = 'build'>
+<li>What is a sample? <!-- single draw of i,...,N from a population. --></li>
+<li>What about a sampling distribution? <!-- distribution of a chosen sample statistic over repeated samples. --></li>
+<li>Test-statistic? <!-- observed scalar quantity of interest that describes your data --></li>
+<li>P-value?</li>
+</ul>
+
+<p>&#8230;need to think of fun examples to begin lab :[</p>
+
+</article></slide><slide class=""><hgroup><h2>Quick review of potential outcomes</h2></hgroup><article  id="quick-review-of-potential-outcomes">
+
+<p>Which of these are observed?</p>
+
+<table id="t01" ; style="width:80%; height:50%; border:1px solid black;margin-left:auto;margin-right:auto;">
+
+<thead>
+
+<tr>
+
+<td style="text-align:center;">
+
+</td>
+
+<td style="text-align:center;">
+
+<strong>\(Y = 1\)</strong>
+
+</td>
+
+<td style="text-align:center;">
+
+<strong>\(Y = 0\)</strong>
+
+</td>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td style="text-align:center;">
+
+<strong>\(D = 1\) </strong>
+
+</td>
+
+<td style="text-align:center">
+
+\(\mathbb{E}[Y_i(1)|D_i = 1]\)
+
+</td>
+
+<td style="text-align:center">
+
+\(\mathbb{E}[Y_i(0)|D_i = 1]\)
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:center;">
+
+<strong>\(D = 0\)</strong>
+
+</td>
+
+<td style="text-align:center">
+
+\(\mathbb{E}[Y_i(1)|D_i = 0]\)
+
+</td>
+
+<td style="text-align:center;">
+
+\(\mathbb{E}[Y_i(0)|D_i = 0]\)
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</article></slide><slide class=""><hgroup><h2>Quick review of potential outcomes</h2></hgroup><article  id="quick-review-of-potential-outcomes-1">
+
+<p>Which of these are observed?</p>
+
+<table id="t01"; style="width:80%; height:50%; border:1px solid black;margin-left:auto;margin-right:auto;">
+
+<thead>
+
+<tr>
+
+<td style="text-align:center;">
+
+</th>
+
+<td style="text-align:center;">
+
+<strong>\(Y = 1\)</strong>
+
+</td>
+
+<td style="text-align:center;">
+
+<strong>\(Y = 0\)</strong>
+
+</td>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td style="text-align:center;">
+
+<strong>\(D = 1\) </strong>
+
+</td>
+
+<td style="text-align:center">
+
+\(\mathbb{E}[Y_i(1)|D_i = 1]\)
+
+</td>
+
+<td style="text-align:center; color:red">
+
+\(\mathbb{E}[Y_i(0)|D_i = 1]\)
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:center;">
+
+<strong>\(D = 0\)</strong>
+
+</td>
+
+<td style="text-align:center; color:red">
+
+\(\mathbb{E}[Y_i(1)|D_i = 0]\)
+
+</td>
+
+<td style="text-align:center;">
+
+\(\mathbb{E}[Y_i(0)|D_i = 0]\)
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+<!-- <br> -->
+
+<ul class = 'build'>
+<li><p>maybe put in appendix?</p></li>
+<li><p>If \(\{Y_i(1), Y_i(0)\} \perp D_i\) and SUTVA hold, the population average treatment effect, \(ATE = \mathbb{E}[Y_i(1) - Y_i(0)]\), is identified.<footnote>The estimator we use in a finite sample is \(\widehat{ATE} = \frac{1}{n_1}\sum^n_{i=1} (D_i) Y_i - \frac{1}{n_0}\sum^n_{i=1} (1-D_i)Y_i\)</footnote> <!-- Since randomization makes D independent of POs, the selection bias disappears. See [insert textbook pages?]--></p></li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2>Hypothesis Testing in Randomization Inference</h2></hgroup><article  id="hypothesis-testing-in-randomization-inference">
+
+<ul class = 'build'>
+<li>How can we assess the uncertainty around the \(\widehat{ATE}\) of our sample?</li>
+</ul>
+
+<!-- Also known as Permutation Tests for reasons that will become obvious in a bit.-->
+
+<!-- Q: Where does the uncertainty come from? Compare this to model-based inference...In RI, POs are fixed not random variables. -->
+
+<ul class = 'build'>
+<li><p>Define the <span class="blue">
+ sharp </span> null hypothesis as: \[H_0: Y_i(1) - Y_i(0) = 0\] for all units \(i\). <!-- In other words, when there is no individual-level effect. --> <!-- You may also think of this as H_0: \beta = 0, if that helps.--></p></li>
+<li><p>Note that this is &quot;stronger&quot; than: \[\mathbb{E}[Y_i(1) - Y_i(0)] = 0\]</p></li>
+<li><div class="red">
+What&#39;s the difference? Why is the first a stronger statement than the second?</div>
+
+<!-- What does the first say (individual potential outcomes), what does the second say? --></li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2>Hypothesis testing in Randomization Inference</h2></hgroup><article  id="hypothesis-testing-in-randomization-inference-1">
+
+<ul class = 'build'>
+<li><p>Under the null (\(H_0: Y_i(1) = Y_i(0)\)), we can construct an exact <footnote> <em>Exact if all possible random assignments are simulated. The number of permutations can blow up quickly, in which case, it is not practical to simulate them all. See additional notes.</em></footnote> sampling distribution for the sample ATE.</p></li>
+<li><p>How? Assuming <span>
+\(Y_i(1) = Y_i(0)\)</span> means that we observe <em>both</em> potential outcomes for unit \(i\)! Thus, allowing us to simulate all possible randomizations with the full set of potential outcomes.</p></li>
+<li><p>Then we ask: &quot;If this null were true, how likely am I to get the estimate that I actually obtained?&quot;</p></li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2>A simple example with some code</h2></hgroup><article  id="a-simple-example-with-some-code">
+
+<p>Suppose we have a vector of observed outcomes from an experiment with 9 observations where 5 units were treated.</p>
+
+<pre class = 'prettyprint lang-r'># Observed outcomes
+Y &lt;- c(0, 1, 4, 3, 0, 3, 0, 0, 3)
+
+# Treatment assignment
+d &lt;- c(1, 1, 0, 0, 1, 1, 0, 1, 0)
+
+# compute the sample ATE
+obs.sate &lt;- mean(Y[which(d==1)]) - mean(Y[which(d==0)])
+obs.sate</pre>
+
+<pre >## [1] -1.7</pre>
+
+</article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
+
+<p>Create matrix of all possible treatment assignments for all 9 units.</p>
+
+<pre class = 'prettyprint lang-r'># number of units
+n &lt;- 9
+
+# units can either be given treatment or not
+D &lt;- c(0,1) 
+
+# permute treatment assignments
+all_permute_treatment &lt;- expand.grid(rep(list(D),n))
+#dim(all_permute_treatment) = 512 x 9
+head(all_permute_treatment)</pre>
+
+<pre >##   Var1 Var2 Var3 Var4 Var5 Var6 Var7 Var8 Var9
+## 1    0    0    0    0    0    0    0    0    0
+## 2    1    0    0    0    0    0    0    0    0
+## 3    0    1    0    0    0    0    0    0    0
+## 4    1    1    0    0    0    0    0    0    0
+## 5    0    0    1    0    0    0    0    0    0
+## 6    1    0    1    0    0    0    0    0    0</pre>
+
+</article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
+
+<pre class = 'prettyprint lang-r'># selecting only the rows where the number of treated is equal to 5
+all_permute_treatment &lt;- all_permute_treatment[rowSums(all_permute_treatment) == 5, ]
+
+#dim(all_permute_treatment) = 126 x 9 (see additional notes)
+
+head(all_permute_treatment, n = 10)</pre>
+
+<pre >##    Var1 Var2 Var3 Var4 Var5 Var6 Var7 Var8 Var9
+## 32    1    1    1    1    1    0    0    0    0
+## 48    1    1    1    1    0    1    0    0    0
+## 56    1    1    1    0    1    1    0    0    0
+## 60    1    1    0    1    1    1    0    0    0
+## 62    1    0    1    1    1    1    0    0    0
+## 63    0    1    1    1    1    1    0    0    0
+## 80    1    1    1    1    0    0    1    0    0
+## 88    1    1    1    0    1    0    1    0    0
+## 92    1    1    0    1    1    0    1    0    0
+## 94    1    0    1    1    1    0    1    0    0</pre>
+
+<p>. . .</p>
+
+</article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
+
+<p>We want to simulate a distribution of a test statistic under the sharp null. For example, here we are calculating the sample ATE (the difference-in-means estimator) for each permutation.</p>
+
+<pre class = 'prettyprint lang-r'>permute.sate &lt;- c(length(all_permute_treatment))
+
+for(i in 1:nrow(all_permute_treatment)){
+  D_star &lt;- unlist(all_permute_treatment[i,])
+  permute.sate[i] &lt;- mean(Y[which(D_star==1)]) - mean(Y[which(D_star==0)])
+}</pre>
+
+<ul class = 'build'>
+<li><span class="red">
+ Spot the test statistic! </span></li>
+<li>We can always replace this with another quantity of interest. <footnote> i.e. rank sum statistic</footnote> <span color="blue">
+ this is part of the appeal of RI </span></li>
+</ul>
+
+<pre class = 'prettyprint lang-r'>quantile(permute.sate, c(0.025, 0.975))</pre>
+
+<pre >##     2.5%    97.5% 
+## -2.09375  2.35000</pre>
+
+</article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
+
+<pre class = 'prettyprint lang-r'># this is our sampling distribution!
+library(ggplot2)
+qplot(permute.sate) +
+  labs(x = &quot;Simulated Effect Size&quot;, y = &quot;Count&quot;) +
+  geom_vline(xintercept = obs.sate, lty =2, col = &quot;red&quot;) +
+  theme_bw()</pre>
+
+<p><img src="randomization_inference_files/figure-html/unnamed-chunk-6-1.png" width="480" style="display: block; margin: auto;" /></p>
+
+</article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
+
+<ul class = 'build'>
+<li>Let&#39;s count how many of the simulated values are as large (in magnitude) as the observed ATE.</li>
+</ul>
+
+<pre class = 'prettyprint lang-r'># This is a two sided test
+t_star &lt;- length(permute.sate[which(abs(permute.sate) &gt;= abs(obs.sate))])
+# t_star = 22</pre>
+
+<ul class = 'build'>
+<li>Then, divide by the number of permutations to get the <span class="red">
+ [???] </span>. What did we just compute? <footnote>It&#39;s just a counting problem: \[p = \frac{1}{K}\sum_{k=1}^K \mathbb{I} (|\hat{T_k}| \geq |T|)\] where K is the total number of permutations, and T is the test statistic. \(\mathbb{I}(\cdot)\) is the indicator function. </footnote></li>
+</ul>
+
+<pre class = 'prettyprint lang-r'>t_star/nrow(all_permute_treatment)</pre>
+
+<pre >## [1] 0.1746032</pre>
+
+<ul class = 'build'>
+<li><span class="red">
+ How do we interpret this value? </span> <!-- Q: how would we calculate a one-tailed test?--> <!-- Q: how does this differ from a t-test?--></li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
+
+<p>All this can be done easily with the <code>ri2</code> package!</p>
+
+<ul class = 'build'>
+<li>Key functions: <code>declare_ra()</code> and <code>conduct_ri()</code></li>
+</ul>
+
+<pre class = 'prettyprint lang-r'>library(ri2)
+
+# using the same toy example...
+dat_table &lt;- data.frame(Z = d, Y = Y)
+
+# &quot;declare&quot; your randomization procedure: we have 9 observations, 5 of which are treated
+declaration &lt;- declare_ra(N = 9, m = 5)
+
+# Conduct Randomization Inference
+ri &lt;- conduct_ri(
+  formula = Y ~ Z,
+  declaration = declaration,
+  sharp_hypothesis = 0,
+  data = dat_table
+)</pre>
+
+</article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
+
+<p>Look familiar?</p>
+
+<pre class = 'prettyprint lang-r'>summary(ri)</pre>
+
+<pre >##   term estimate two_tailed_p_value
+## 1    Z     -1.7          0.1746032</pre>
+
+<pre class = 'prettyprint lang-r'>plot(ri)</pre>
+
+<p><img src="randomization_inference_files/figure-html/unnamed-chunk-10-1.png" width="480" style="display: block; margin: auto;" /></p>
+
+</article></slide><slide class=""><hgroup><h2>Inverting Hypothesis Testing to Construct CIs</h2></hgroup><article  id="inverting-hypothesis-testing-to-construct-cis">
+
+<ul class = 'build'>
+<li>Cool story, but RI doesn&#39;t tell us anything about the magnitude (effect size)?</li>
+<li>We &quot;invert&quot; the test&#8230;</li>
+<li>assume additive constant effects&#8230;</li>
+<li>Slight change to the sharp null to be: \[Y_i(1) =  Y_i(0) + \tau\] for all units.</li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2>Summary of RI Procedure</h2></hgroup><article  id="summary-of-ri-procedure">
+
+<ol class = 'build'>
+<li>Define the sharp null and choose a test statistic.</li>
+<li>Calculate observed test statistic.</li>
+<li>Permute vectors of different possible randomization assignments.</li>
+<li>Compute the test statistic for these simulations.</li>
+<li>Find the p-value.</li>
+</ol>
+
+</article></slide><slide class=""><hgroup><h2>Blocking</h2></hgroup><article  id="blocking">
+
+<ul class = 'build'>
+<li>A real example?</li>
+<li>Clustering?</li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2>Balance Test (maybe save for next lab?)</h2></hgroup><article  id="balance-test-maybe-save-for-next-lab">
+
+<ul class = 'build'>
+<li>F-test (vs. t-test for each pre-treatment covariate)</li>
+<li>btw, there&#39;s some debate about this&#8230;assuming that random assignment was implemented correctly, should examination of imbalances play any role in choosing which covariates to adjust for? more on this when we talk about SOO.</li>
+</ul>
+
+</article></slide><slide class="segue dark nobackground level1"><hgroup class = 'auto-fadein'><h2>Additional Notes</h2></hgroup><article  id="additional-notes">
+
+</article></slide><slide class=""><hgroup><h2>Quiz yourself!</h2></hgroup><article  id="quiz-yourself">
+
+<p>Are the following equalities always true?</p>
+
+<ul class = 'build'>
+<li>\(Y_{di} = Y_{i}(d)\)
+
+<div class="blue">
+Yes.</div></li>
+<li>\(\mathbb{E}[Y_{i}|D_i = 1] = \mathbb{E}[Y_{i}|D_i = 0]\)
+
+<div class="blue">
+Nope.</div>
+
+<!-- avg PO of treated group not always avg PO of untreated --></li>
+<li>\(Z_{D_ii} = Z_{i}(D_i, D_{i-1}, D_{i+1})\)
+
+<div class="blue">
+Nope.</div>
+
+<!-- SUTVA --></li>
+<li>\(Y_i \perp D_i = \{Y_i(1), Y_i(0)\} \perp D_i\)
+
+<div class="blue">
+Nope again.</div>
+
+<!-- Otherwise, ATE would be 0. --></li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2>Number of Permutations</h2></hgroup><article  id="number-of-permutations">
+
+<ul class = 'build'>
+<li><p>For \(N\) observations, where \(n_t\) denotes the number of observations in the treated group, \(n_c\) is number of observations in the control group, and \(n_t + n_c = N\), the permutation of assignments is: \[{N\choose n_t} = \frac{N!}{n_t!(N-n_t)!}= \frac{N!}{n_t! n_c!}\] <!-- --></p></li>
+<li><p>Consider our first example: N = 9, treated = 5, control = 4</p></li>
+</ul>
+
+<pre class = 'prettyprint lang-r'>factorial(9)/(factorial(5)*factorial(4))</pre>
+
+<pre >## [1] 126</pre>
+
+<ul class = 'build'>
+<li>What if \(N = 50\)? In the case where the number of possible randomizations is too large and we cannot obtain an exact distribution, we can rely on Monte Carlo approximation.</li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2></h2></hgroup><article ></article></slide>
+
+
+  <slide class="backdrop"></slide>
+
+</slides>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "randomization_inference_files/mathjax-local/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+<!-- map slide visiblity events into shiny -->
+<script>
+  (function() {
+    if (window.jQuery) {
+       window.jQuery(document).on('slideleave', function(e) {
+         window.jQuery(e.target).trigger('hidden');
+      });
+       window.jQuery(document).on('slideenter', function(e) {
+         window.jQuery(e.target).trigger('shown');
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>

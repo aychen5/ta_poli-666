@@ -1,0 +1,355 @@
+---
+title: "Randomization Inference"
+author: "Annie Chen"
+date: "1/3/2020"
+output: 
+   ioslides_presentation:
+    widescreen: true
+    incremental: true 
+    mathjax: local
+    self_contained: FALSE
+    css: style.css 
+#runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<style>
+div.footnotes {
+  position: absolute;
+  bottom: 0;
+  margin-bottom: 10px;
+  width: 80%;
+  font-size: 0.6em;
+}
+</style>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script>
+$(document).ready(function() {
+  $('slide:not(.backdrop):not(.title-slide)').append('<div class=\"footnotes\">');
+
+  $('footnote').each(function(index) {
+    var text  = $(this).html();
+    var fnNum = (index+1).toString();
+    $(this).html(fnNum.sup());
+    var footnote = fnNum + '. ' + text + '<br/>';
+    var oldContent = $(this).parents('slide').children('div.footnotes').html();
+    var newContent = oldContent + footnote;
+    $(this).parents('slide').children('div.footnotes').html(newContent);
+  });
+});
+</script>
+
+
+## Welcome to POLI666!
+
+- Office hours
+- Problem sets 
+<!-- will try to get the grades back to you before your next one is due-->
+- other admin stuff?
+
+## Review of Sampling Distributions and Hypothesis Testing 
+
+Definitions:
+
+- What is a sample?
+<!-- single draw of i,...,N from a population. -->
+- What about a sampling distribution?
+<!-- distribution of a chosen sample statistic over repeated samples. -->
+- Test-statistic?
+<!-- observed scalar quantity of interest that describes your data -->
+- P-value?
+
+
+...need to think of fun examples to begin lab :[
+
+## Quick review of potential outcomes
+
+Which of these are observed?
+
+<table id="t01"; style="width:80%; height:50%; border:1px solid black;margin-left:auto;margin-right:auto;">
+ <thead>
+  <tr>
+   <td style="text-align:center;">   </td>
+   <td style="text-align:center;"> <strong>$Y = 1$</strong> </td>
+   <td style="text-align:center;"> <strong>$Y = 0$</strong> </td>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:center;"> <strong>$D = 1$ </strong></td>
+   <td style="text-align:center"> $\mathbb{E}[Y_i(1)|D_i = 1]$ </td>
+   <td style="text-align:center"> $\mathbb{E}[Y_i(0)|D_i = 1]$ </td>
+  </tr>
+  <tr>
+   <td style="text-align:center;"> <strong>$D = 0$</strong> </td>
+   <td style="text-align:center"> $\mathbb{E}[Y_i(1)|D_i = 0]$ </td>
+   <td style="text-align:center;"> $\mathbb{E}[Y_i(0)|D_i = 0]$ </td>
+  </tr>
+</tbody>
+</table>
+
+## Quick review of potential outcomes
+
+Which of these are observed?
+
+<table id="t01"; style="width:80%; height:50%; border:1px solid black;margin-left:auto;margin-right:auto;">
+ <thead>
+  <tr>
+   <td style="text-align:center;">   </th>
+   <td style="text-align:center;"> <strong>$Y = 1$</strong> </td>
+   <td style="text-align:center;"> <strong>$Y = 0$</strong> </td>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:center;"> <strong>$D = 1$ </strong></td>
+   <td style="text-align:center"> $\mathbb{E}[Y_i(1)|D_i = 1]$ </td>
+   <td style="text-align:center; color:red"> $\mathbb{E}[Y_i(0)|D_i = 1]$ </td>
+  </tr>
+  <tr>
+   <td style="text-align:center;"> <strong>$D = 0$</strong> </td>
+   <td style="text-align:center; color:red"> $\mathbb{E}[Y_i(1)|D_i = 0]$ </td>
+   <td style="text-align:center;"> $\mathbb{E}[Y_i(0)|D_i = 0]$ </td>
+  </tr>
+</tbody>
+</table>
+
+<!-- <br> -->
+
+- maybe put in appendix?
+
+- If $\{Y_i(1), Y_i(0)\} \perp D_i$ and SUTVA hold, the population average treatment effect, $ATE = \mathbb{E}[Y_i(1) - Y_i(0)]$, is identified.<footnote>The estimator we use in a finite sample is
+$\widehat{ATE} = \frac{1}{n_1}\sum^n_{i=1} (D_i) Y_i - \frac{1}{n_0}\sum^n_{i=1} (1-D_i)Y_i$</footnote> 
+<!-- Since randomization makes D independent of POs, the selection bias disappears. See [insert textbook pages?]-->
+ 
+
+
+## Hypothesis Testing in Randomization Inference
+
+- How can we assess the uncertainty around the $\widehat{ATE}$ of our sample?
+
+<!-- Also known as Permutation Tests for reasons that will become obvious in a bit.-->
+
+<!-- Q: Where does the uncertainty come from? Compare this to model-based inference...In RI, POs are fixed not random variables. -->
+
+- Define the <span class="blue"> sharp </span> null hypothesis as: $$H_0: Y_i(1) - Y_i(0) = 0$$ for all units $i$.
+<!-- In other words, when there is no individual-level effect. -->
+<!-- You may also think of this as H_0: \beta = 0, if that helps.-->
+
+- Note that this is "stronger" than: $$\mathbb{E}[Y_i(1) - Y_i(0)] = 0$$ 
+
+- <div class="red"> What's the difference? Why is the first a stronger statement than the second? </div>
+<!-- What does the first say (individual potential outcomes), what does the second say? -->
+
+## Hypothesis testing in Randomization Inference
+
+- Under the null ($H_0: Y_i(1) = Y_i(0)$), we can construct an exact <footnote> *Exact if all possible random assignments are simulated. The number of permutations can blow up quickly, in which case, it is not practical to simulate them all. See additional notes.*</footnote> sampling distribution for the sample ATE.
+
+- How? Assuming <span font-size:14px>$Y_i(1) = Y_i(0)$</span> means that we observe *both* potential outcomes for unit $i$! Thus, allowing us to simulate all possible randomizations with the full set of potential outcomes.
+
+- Then we ask: "If this null were true, how likely am I to get the estimate that I actually obtained?"
+
+## A simple example with some code
+
+Suppose we have a vector of observed outcomes from an experiment with 9 observations where 5 units were treated.
+
+```{r}
+# Observed outcomes
+Y <- c(0, 1, 4, 3, 0, 3, 0, 0, 3)
+
+# Treatment assignment
+d <- c(1, 1, 0, 0, 1, 1, 0, 1, 0)
+
+# compute the sample ATE
+obs.sate <- mean(Y[which(d==1)]) - mean(Y[which(d==0)])
+obs.sate
+```
+
+---- 
+
+Create matrix of all possible treatment assignments for all 9 units.
+
+```{r}
+# number of units
+n <- 9
+
+# units can either be given treatment or not
+D <- c(0,1) 
+
+# permute treatment assignments
+all_permute_treatment <- expand.grid(rep(list(D),n))
+#dim(all_permute_treatment) = 512 x 9
+head(all_permute_treatment)
+```
+
+----
+
+```{r}
+# selecting only the rows where the number of treated is equal to 5
+all_permute_treatment <- all_permute_treatment[rowSums(all_permute_treatment) == 5, ]
+
+#dim(all_permute_treatment) = 126 x 9 (see additional notes)
+
+head(all_permute_treatment, n = 10)
+```
+.
+.
+.
+
+----
+
+We want to simulate a distribution of a test statistic under the sharp null. For example, here we are calculating the sample ATE (the difference-in-means estimator) for each permutation.
+
+```{r}
+permute.sate <- c(length(all_permute_treatment))
+
+for(i in 1:nrow(all_permute_treatment)){
+  D_star <- unlist(all_permute_treatment[i,])
+  permute.sate[i] <- mean(Y[which(D_star==1)]) - mean(Y[which(D_star==0)])
+}
+```
+
+- <span class="red"> Spot the test statistic! </span>
+- We can always replace this with another quantity of interest.
+<footnote> i.e. rank sum statistic</footnote>
+<span color = "blue"> this is part of the appeal of RI </span>
+
+```{r}
+quantile(permute.sate, c(0.025, 0.975))
+```
+
+----
+
+```{r message = FALSE, fig.width=5, fig.height=4, fig.align="center"}
+# this is our sampling distribution!
+library(ggplot2)
+qplot(permute.sate) +
+  labs(x = "Simulated Effect Size", y = "Count") +
+  geom_vline(xintercept = obs.sate, lty =2, col = "red") +
+  theme_bw()
+```
+
+----
+
+- Let's count how many of the simulated values are as large (in magnitude) as the observed ATE. 
+
+```{r}
+# This is a two sided test
+t_star <- length(permute.sate[which(abs(permute.sate) >= abs(obs.sate))])
+# t_star = 22
+```
+
+- Then, divide by the number of permutations to get the <span class="red"> [???] </span>. What did we just compute? <footnote>It's just a counting problem: $$p = \frac{1}{K}\sum_{k=1}^K \mathbb{I} (|\hat{T_k}| \geq |T|)$$ where K is the total number of permutations, and T is the test statistic. $\mathbb{I}(\cdot)$ is the indicator function. </footnote> 
+
+```{r}
+t_star/nrow(all_permute_treatment)
+```
+
+- <span class="red"> How do we interpret this value? </span>
+<!-- Q: how would we calculate a one-tailed test?-->
+<!-- Q: how does this differ from a t-test?-->
+
+----
+
+All this can be done easily with the `ri2` package!
+
+- Key functions: `declare_ra()` and `conduct_ri()`
+
+```{r message = FALSE}
+library(ri2)
+
+# using the same toy example...
+dat_table <- data.frame(Z = d, Y = Y)
+
+# "declare" your randomization procedure: we have 9 observations, 5 of which are treated
+declaration <- declare_ra(N = 9, m = 5)
+
+# Conduct Randomization Inference
+ri <- conduct_ri(
+  formula = Y ~ Z,
+  declaration = declaration,
+  sharp_hypothesis = 0,
+  data = dat_table
+)
+```
+
+----
+
+Look familiar?
+```{r, fig.width=5, fig.height=4, fig.align="center"}
+summary(ri)
+
+plot(ri)
+```
+
+
+## Inverting Hypothesis Testing to Construct CIs
+
+- Cool story, but RI doesn't tell us anything about the magnitude (effect size)?
+- We "invert" the test...
+- assume additive constant effects...
+- Slight change to the sharp null to be: $$Y_i(1) =  Y_i(0) + \tau$$ for all units. 
+
+## Summary of RI Procedure
+1. Define the sharp null and choose a test statistic.
+2. Calculate observed test statistic.
+3. Permute vectors of different possible randomization assignments.
+4. Compute the test statistic for these simulations.
+5. Find the p-value. 
+
+
+## Blocking
+
+
+- A real example?
+- Clustering?
+
+
+## Balance Test (maybe save for next lab?)
+
+- F-test (vs. t-test for each pre-treatment covariate)
+- btw, there's some debate about this...assuming that random assignment was implemented correctly, should examination of imbalances play any role in choosing which covariates to adjust for? more on this when we talk about SOO. 
+
+# Additional Notes
+
+## Number of Permutations
+
+- For $N$ observations, where $n_t$ denotes the number of observations in the treated group, $n_c$ is number of observations in the control group, and $n_t + n_c = N$, the permutation of assignments is: 
+$${N\choose n_t} = \frac{N!}{n_t!(N-n_t)!}= \frac{N!}{n_t! n_c!}$$ 
+<!-- -->
+
+
+- Consider our first example: N = 9, treated = 5, control = 4
+```{r}
+factorial(9)/(factorial(5)*factorial(4))
+```
+
+- What if $N = 50$? In the case where the number of possible randomizations is too large and we cannot obtain an exact distribution, we can rely on Monte Carlo approximation.
+
+----
+
+```{r, echo=FALSE, eval = FALSE, include = FALSE}
+shinyApp(
+
+  ui = fluidPage(
+    selectInput("region", "Region:",
+                choices = colnames(WorldPhones)),
+    plotOutput("phonePlot")
+  ),
+
+  server = function(input, output) {
+    output$phonePlot = renderPlot({
+      barplot(WorldPhones[,input$region]*1000,
+              ylab = "Number of Telephones", xlab = "Year")
+    })
+  },
+
+  options = list(height = 500)
+)
+```
+
+
