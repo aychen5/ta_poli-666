@@ -1,0 +1,29 @@
+---
+title: "Problem Set 1"
+output:
+  github_document:
+    pandoc_args: [
+    "--webtex"
+    ]
+option: --mathjax
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+$$a^2 + b^2 = c^2$$
+
+$$\begin{vmatrix}a & b\\
+c & d
+\end{vmatrix}=ad-bc$$
+
+
+
+\[\sum_i^{n=10}\\
+\sum_i^{n=10}\\
+\sum_i^{n=10}
+\]
