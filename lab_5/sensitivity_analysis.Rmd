@@ -1,0 +1,445 @@
+---
+title: "Sensitivity Analysis"
+author: "Annie Chen"
+date: "February 5, 2020"
+output: 
+  beamer_presentation:
+    incremental: false
+    keep_tex: yes
+    theme: "AnnArbor"
+    colortheme: "dolphin"
+    fonttheme: "structuresmallcapsserif"  
+header-includes:
+- \usepackage{multirow}
+- \usepackage{graphicx}
+- \graphicspath{ {./images/} }
+- \DeclareUnicodeCharacter{2212}{-}
+- \newcommand{\indep}{\rotatebox[origin=c]{90}{$\models$}}
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning = FALSE)
+```
+
+
+```{r echo = FALSE}
+pacman::p_load(dplyr, ggplot2, xtable, Matching, sandwich, lmtest, stargazer, rbounds, rgenoud)
+```
+
+
+## Unmeasured Confounding
+
+- With matching, we aim to achieve balance on *observed* covariates. 
+
+- But...there's no guarantee that there is balance on *unobserved* variables that we did not match on.
+
+
+
+## Sensitivity Analysis
+
+- How sensitive are estimates of an average causal effect to the potential effects of unobservable treatment selection patterns?
+
+- An unobserved covariate, C, will induce a material degree of bias only if it is sufficiently associated with both treatment assignment, D, and the outcome, Y.^[OVB iff $C_i \not\!\perp\!\!\!\perp D_i$ and $C_i \not\!\perp\!\!\!\perp Y_i$]
+
+- \color{red}{What does the DAG look like?}
+
+## Review of Omitted Variable Bias
+
+- Suppose the true model can be represented by the "long" regression formula: $$Y_i = \beta_0 + \beta_1 D_i + \beta_2 C_i + \epsilon_i$$ where $C_i$ denotes an unobserved (confounding) variable, and $D_i$ is the treatment.
+
+- In the case of OVB, $$Y_i = \beta^{\star}_0 + \beta^{\star}_1 D_i + \epsilon^{\star}_i$$ if $$C_i = \gamma_0 + \gamma_1 D_i + \nu_i$$
+
+- Then, $$Y_i = \beta_0 + \beta_1 D_i + \beta_2 (\gamma_0 + \gamma_1 D_i + \nu_i) + \epsilon_i$$
+$$Y_i = \beta_0 + \beta_2\gamma_0 + (\beta_1 + \beta_2 \gamma_1)D_i  + \beta_2\nu_i + \epsilon_i$$
+- and $$\beta^{\star}_1 = \beta_1 + \color{red}{\beta_2} \color{blue}{\gamma_1}$$
+
+
+
+## Imbens-style Sensitivity Analysis
+
+- Where $U$ (unobserved confounder) and $D$ (treatment) are binary ($0$ or $1$), the bias of the treatment effect ($\tau$) is:
+
+$$\mathbb{E}[\hat{\tau}] - \tau = \color{blue}{\mathbb{P}(U_i = 1 | D_i = 1) - \mathbb{P}(U_i = 1 | D_i = 0)}$$ $$\times \color{red}{\mathbb{E}[Y_i| U_i = 1] - \mathbb{E}[Y_i| U_i = 0]}$$
+
+- Where $\color{blue}{\delta \equiv \mathbb{P}(U_i = 1 | D_i = 1) - \mathbb{P}(U_i = 1 | D_i = 0)}$ is the difference in average $U_i$ between treatment conditions $\color{red}{\gamma \equiv \mathbb{E}[Y_i| U_i = 1] - \mathbb{E}[Y_i| U_i = 0]}$ represents the effect of $U_i$ on $Y_i$.
+
+- The bias is $\color{blue}{\delta}\color{red}{\gamma}$ (similar to the OVB formula we just saw in the regression context: $\mathbb{E}[\hat{\tau}] = \tau + \color{blue}{\delta}\color{red}{\gamma}$). 
+
+- \color{red}{What assumption did we make for this to be true?}
+
+## Return to Lalonde Example
+
+```{r}
+data(lalonde, package = "Matching")
+```
+
+\small
+```{r}
+model1 <- lm(re78 ~ treat + age + educ + married + black + re75, data = lalonde)
+model1_HC <- list(coeftest(model1, 
+                           vcov = vcovHC(model1, type = "HC2"))[, 2])
+```
+\normalsize
+
+\tiny
+```{r echo = FALSE, results='asis'}
+stargazer(model1, se = model1_HC, title = 'OLS Results', style = 'apsr',
+          keep.stat = c('n', 'rsq'), notes = c("HC2 Robust SEs"),  star.char ="", header=FALSE)
+```
+\normalsize
+
+
+##
+- What is half the magnitude of the treatment coefficient?
+```{r}
+library(lm.beta)
+# using standardized coeffs
+beta_half <- lm.beta(model1)$standardized.coef[2]/2
+c(lm.beta(model1)$standardized.coef[2], beta_half)
+```
+
+```{r echo= F, eval =F}
+#unstandardized
+beta_half <- model1$coefficients[2]/2
+```
+
+
+$\delta = \mathbb{P}(U_i = 1 | D_i = 1) - \mathbb{P}(U_i = 1 | D_i = 0)$
+```{r}
+# The range of delta is 0,1
+delta <- seq(0.001, 1, by = 0.01)
+```
+
+- Exercise: Using $\delta$ and `beta_half`, solve for $\gamma$ (remember: $\mathbb{E}[\hat{\tau}] = \tau + \delta\gamma$). Then plot $\delta$ (x-axis) and $\gamma$ (y-axis). 
+
+##
+```{r}
+# Solve for gamma = E[Y_i| U_i = 1] - E[Y_i| U_i = 0]
+g <- beta_half/delta
+```
+
+\small
+```{r fig.align="center", fig.height = 2, fig.width=3}
+ggplot(data.frame(delta = delta, g = g), aes(x = delta, y = g)) +
+  geom_path() + 
+  xlab(expression(delta)) + ylab(expression(gamma)) +
+  ylim(0, 1) + theme_bw()
+```
+\normalsize
+
+- What does this curve represent?
+
+##
+
+- How are the covariates related to the treatment?
+
+\small
+```{r}
+# Estimate the relationship between covariates (U) and treatment (D)
+mod_delta <- lm(treat ~ age + educ + married + black + re75, 
+           data = lalonde)
+```
+\normalsize
+
+\tiny
+```{r echo = FALSE, results='asis'}
+mod_delt_HC <- list(coeftest(mod_delta, vcov = vcovHC(mod_delta, type = "HC2"))[, 2])
+
+stargazer(mod_delta, se = mod_delt_HC, title = 'OLS delta', style = 'apsr',
+          keep.stat = c('n', 'rsq'),omit.table.layout = "n", notes = c("HC2 Robust SEs"),  star.char ="", header=FALSE)
+```
+\normalsize
+
+##
+
+- How do they relate to the outcome?
+\small
+```{r}
+# Estimate relationship between covariates (U) and outcome (Y)
+mod_gamma <- lm(re78 ~ age + educ + married + black + re75, 
+           data = lalonde)
+```
+\normalsize
+
+\tiny
+```{r echo = FALSE, results='asis'}
+mod_gam_HC <- list(coeftest(mod_gamma, vcov = vcovHC(mod_gamma, type = "HC2"))[, 2])
+
+stargazer(mod_gamma, se = mod_gam_HC, title = 'OLS gamma', style = 'apsr',
+          keep.stat = c('n', 'rsq'),omit.table.layout = "n", notes = c("HC2 Robust SEs"),  star.char ="", header=FALSE)
+```
+\normalsize
+
+##
+
+- To compare the hypothetical degree of confounding based on the sensitivity parameters with the actual degree of confounding created by some observed covariates, we plot them against the curve.
+
+- We use the standardized coefficients here, but you can also calculate the raw $\delta$ and $\gamma$ values, or compute the partial R-squared.^[Both standardized coeffs and partial r measure the unique contribution of a covariate in a model.]
+
+\small
+```{r}
+library(lm.beta)
+# Extract standardized coefficients for age
+delta_age <- abs(lm.beta(mod_delta)$standardized.coefficients[2])
+gamma_age <- abs(lm.beta(mod_gamma)$standardized.coefficients[2])
+```
+\normalsize
+
+
+```{r echo = FALSE}
+# consider using partial r-squared instead of standardized coefficients
+
+#library(rsq)
+#mod_delta_no <- lm(treat ~ educ + married + black + re75, data = lalonde)
+#rsq.partial(mod_delta, mod_delta_no)
+```
+
+##
+
+- Do this for other covariates in the model...
+
+```{r echo = FALSE, fig.align="center", fig.height = 3, fig.width=4}
+delta_blk <- abs(lm.beta(mod_delta)$standardized.coefficients[5])
+gamma_blk <- abs(lm.beta(mod_gamma)$standardized.coefficients[5])
+
+# Extract standardized coefficients for  education
+delta_edu <- abs(lm.beta(mod_delta)$standardized.coefficients[3])
+gamma_edu <- abs(lm.beta(mod_gamma)$standardized.coefficients[3])
+
+# Extract standardized coefficients for married
+delta_mar <- abs(lm.beta(mod_delta)$standardized.coefficients[4])
+gamma_mar <- abs(lm.beta(mod_gamma)$standardized.coefficients[4])
+
+#delta_lstyr <- abs(lm.beta(mod_delta)$standardized.coefficients[6])
+#gamma_lstyr <- abs(lm.beta(mod_gamma)$standardized.coefficients[6])
+
+#lstyr_point <- data.frame(delta = delta_lstyr, g = gamma_lstyr)
+blk_point <- data.frame(delta = delta_blk, g = gamma_blk)
+edu_point <- data.frame(delta = delta_edu, g = gamma_edu)
+age_point <- data.frame(delta = delta_age, g = gamma_age)
+mar_point <- data.frame(delta = delta_mar, g = gamma_mar)
+
+# Make plot 
+ggplot(data.frame(delta = delta, g = g), aes(x = delta, y = g)) + geom_path() +
+  xlab(expression(delta)) + ylab(expression(gamma)) + ylim(0, 1) +
+  geom_text(data = blk_point, aes(x = delta, y = g, label = 'Black'), col = "red") +
+  geom_text(data = age_point, aes(x = delta, y = g, label = 'Age'), col = "grey3") +
+ geom_text(data = edu_point, aes(x = delta, y = g, label = 'Edu'), col = "darkgreen") +  
+  #geom_text(data = lstyr_point, aes(x = delta, y = g, label = 'Earnings'), col = "darkgreen") +
+  geom_text(data = mar_point, aes(x = delta, y = g, label = 'Married'), col = "dodgerblue1") +
+  theme_bw()
+```
+
+
+## Return to Randomization Inference (Rosenbaum approach)
+
+- Components of RI:
+    + Null hypothesis (i.e. no treatment effect)
+    + Test-statistic (i.e. Wilcoxon Signed Rank Test)
+    + Number of permutations: *nCr*
+    + p-value is ratio of number of times we observe the test-statistic or greater to number of permutations
+
+- Overview of Rosenbaumian SA: 
+1. Set $\Gamma$  (the sensitivity parameter).^[$\Gamma = 1$is the case where there is no bias from confounding. \color{red}{$\Gamma = 2$?}]
+2. Compute probability of treatment ($\pi(X_i)$) for $\Gamma$ bounds (see lecture slides).
+3. Conduct RI under the null of $min\{\pi(X_i)\} = max\{\pi(X_i)\} = 0.5$.
+4. Repeat for different values of $\Gamma$.
+
+
+## Wilcoxon Signed Rank Statistic
+
+- Wilcoxon \color{red}{Signed} \color{blue}{Rank} \color{violet}{Statistic}
+
+\small
+\begin{center}
+ \begin{tabular}{||c c c c c c||} 
+ \hline
+ Match A &  7 &  5 & 3 & 4 & 1  \\ 
+ \hline
+ Match B & 2 & 4 &  3 & 1 & 2  \\
+ \hline\hline
+ Abs Diff & 5 & 1 & 0 & 3 & 1  \\  
+ \hline
+ \color{red}{Sign} & + & + & NA & + & -  \\ 
+ \hline
+ \color{blue}{Rank} & 4.0 & 1.5 & NA & 3.0 & 1.5  \\ 
+ \hline
+\end{tabular}
+\end{center}
+\normalsize
+
+- \color{violet}{$W = \sum^{N}_i\{S_i\times R_i\}$} \color{black}{where $N$ is the number of pairs where the difference $\neq 0$, $S$ is the sign of the matched pairs ($X_{i} - X_{j}$), and $R$ denotes the rank.}
+
+
+```{r echo = FALSE, eval = F}
+df <- data.frame(y_1 = c(7,5,3,4,1), y_2 = c(2,4,3,1,2), 
+                 t.1 = rep(1, 5), t.0 = rep(0, 5))
+
+diffs <- df[, 1] - df[, 2]
+# exclude pairs where diff=0
+diffs2 <- diffs[diffs != 0]
+# 1 if difference is positive, 0 otherwise
+sgn <- as.numeric(diffs2 > 0)
+# ties receive average of the ranks they span
+r <- rank(abs(diffs2), ties.method = "average")
+W.test <- sum(r * sgn)
+
+
+library(exactRankTests)
+wilcox.exact(df[,1], df[,2], paired=TRUE)
+```
+
+
+##
+
+- \color{red}{Why is it necessary to match first?}
+
+\small
+```{r}
+covars <- c("age", "educ", "black", "re75")
+matched_dat <- Match(Y = lalonde$re78, Tr = lalonde$treat, 
+                     X = lalonde[,covars], Weight = 2)
+
+summary(matched_dat)
+```
+\normalsize
+
+```{r eval = FALSE, echo = FALSE}
+#GENETIC MATCHING
+# genetic weights to optimize balance
+gen_weight <- GenMatch(Tr = lalonde$treat, X = lalonde[,covars], M = 1, 
+                       pop.size = 50, print = 0, exact = T, replace = FALSE)
+
+# Match using genetic weights
+matched_gen <- Match(Y = lalonde$re78, Tr = lalonde$treat, 
+                     X = lalonde[,covars], Weight.matrix = gen_weight,
+                     replace = FALSE)
+
+```
+
+
+## `rbounds` package
+
+- `psens` gives Rosenbaum's bounds for the p-values from a Wilcoxon signed rank test.
+
+\small
+```{r}
+library(rbounds)
+rosenbaum <- psens(matched_dat, Gamma = 1.5, GammaInc = 0.1)
+```
+\normalsize
+
+```{r echo = FALSE, results = 'asis'}
+# print table
+print(xtable(rosenbaum$bounds, digits = 3, caption = "Rosenbaum p-values"), 
+      scalebox='0.75', comment = F)
+```
+
+- Still need to benchmark these hypothetical values against your data by calculating the odds ratios!
+
+
+# Additional Notes
+
+## Plot twist!
+
+- $\Gamma$ can be decomposed into the strength of the relationship between confounder and outcome ($\Delta$) and strength of the relationship between the confounder and treatment ($\Lambda$) as $$\Gamma = \frac{\Delta\Lambda + 1}{\Delta + \Lambda}$$
+
+- Details in Rosenbaum and Silber (2009).
+
+
+
+```{r echo = FALSE, eval = FALSE}
+# full specification
+mod1 <- lm(educ ~ abd + age + fthr.ed + mthr.ed + C.ach, data = d)
+
+# Add covariates as benchmarks to the plot
+# Estimate delta for covariates: fit a propensity score model
+mod.p <- glm(abd ~ age + fthr.ed + mthr.ed + C.ach, data = d, family = binomial(link = "logit"))
+
+# Extract the model matrix
+x.mod.p <- model.matrix(mod.p)
+# Create a copy of the model matrix in which C.ach is only 1
+x.mod.p.ach1 <- data.frame(x.mod.p[, 1:4], C.ach = 1)
+# And another where C.ach is only 0
+x.mod.p.ach0 <- data.frame(x.mod.p[, 1:4], C.ach = 0)
+
+# Get predicted probabilities
+pscore.ach1 <- predict(mod.p, newdata = x.mod.p.ach1, type = "response")
+pscore.ach0 <- predict(mod.p, newdata = x.mod.p.ach0, type = "response")
+
+# The difference in means is the change in propensity from
+# having C.ach=1 instead of C.ach=0, conditional on other
+# covariates
+delta.ach <- mean(pscore.ach1) - mean(pscore.ach0)
+ach.point <- data.frame(delta = delta.ach, g = mod1$coefficients[6])
+
+# do the same process for Age
+summary(d$age) # Q1:age = 17 and Q3:age=25
+```
+
+
+```{r eval = FALSE, echo = FALSE}
+library(ri2)
+
+lalonde_match <- data.frame(Z = matched_gen$mdata$Tr,
+                        Y = matched_gen$mdata$Y)
+
+complete_dec <- declare_ra(N = 370, m = 185)
+
+wilcox_fun <- function(data){
+  wilcox_out <- with(data, wilcox.test(Y ~ Z))
+  wilcox_out$statistic
+}
+
+
+ri_out <-
+  conduct_ri(
+    test_function = wilcox_fun,
+    declaration = complete_dec,
+    sharp_hypothesis = 0.5,
+    data = lalonde_match,
+    sims = 100
+  )
+
+summary(ri_out)
+plot(ri_out)
+```
+
+
+
+
+```{r eval = FALSE, echo = FALSE}
+path <- "/Users/anniechen/Dropbox/psets/PS7"
+d <- read.csv(file.path(path, "child_soldiering.csv"))
+
+# Use the regression estimator
+mod1 <- lm(educ ~ abd + age + fthr.ed + mthr.ed + C.ach, data = d)
+mod1HC2 <- list(coeftest(mod1, vcov = vcovHC(mod1, type = "HC2"))[,
+2])
+
+# What is half the magnitude of the treatment coefficient?
+b.half <- mod1$coefficients[2]/2
+# The range of delta is 0,1
+delta <- seq(0.001, 1, by = 0.01)
+# Solve for gamma
+g <- b.half/delta
+# Make plot
+ggplot(data.frame(delta = delta, g = g), aes(x = delta, y = g)) +
+geom_path() + xlab(expression(delta)) + ylab(expression(gamma)) +
+ylim(-3, 0)
+
+### OR.....
+#Create a contour plot of the bias that would reduce themagnitude of the ATE by hal
+b.half <- abs(lm.beta(mod1)$standardized.coef[2]/2)
+
+# The range of delta is 0,1 because delta = Pr(Ui = 1|Di = 1)−Pr(Ui = 1|Di = 0)
+delta <- seq(0.001, 1, by = 0.01)
+
+# Solve for gamma. E[Yi|Ui =1]−E[Yi|Ui =0]
+g <- b.half/delta
+
+##These are the values of delta and gamma that would cut out ATE in half
+plot(x = delta, y = g, ylim = c(0,1), xlim = c(0,1), type='l')
+```
+

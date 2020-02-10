@@ -13,17 +13,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+Use `$$` or `$` (incline) or `\[\]`. Some examples:
+
+1. Brilliant equation: $e^{i\pi} + 1 = 0$
+
+2. Wow, another one: $$\int_a^b f^{\prime}(x)dx = f(b) - f(a)$$
 
 
-$$a^2 + b^2 = c^2$$
-
+3. Blah, blah, blah...
 $$\begin{vmatrix}a & b\\
 c & d
 \end{vmatrix}=ad-bc$$
 
 
-
-\[\sum_i^{n=10}\\
-\sum_i^{n=10}\\
-\sum_i^{n=10}
-\]
+4. \[\mathbb{E}[Y] = \mathbb{E}[\mathbb{E}[Y|X]]\]

@@ -1,0 +1,307 @@
+---
+title: "SOO and Matching"
+author: "Annie Chen"
+date: "Jan. 29, 2020"
+output: 
+  beamer_presentation:
+    incremental: false
+    keep_tex: yes
+    theme: "AnnArbor"
+    colortheme: "dolphin"
+    fonttheme: "structuresmallcapsserif"  
+header-includes:
+- \usepackage{multirow}
+- \usepackage{graphicx}
+- \graphicspath{ {./images/} }
+- \newcommand{\indep}{\rotatebox[origin=c]{90}{$\models$}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+pacman::p_load(Matching, ebal, MatchIt, dplyr, ggplot2, xtable)
+```
+
+## Review
+
+$ATT = \mathbb{E}[Y_{i}(1) - Y_{i}(0) | D_i = 1]$ 
+
+- \color{red}{Is this identified when D is not randomized?}
+- \color{blue}{Fundamental Problem of Causal Inference} 
+
+
+Under what assumptions can the ATE and ATT be non-parametrically identified? 
+
+- $\{ Y_{i}(0), Y_{i}(1) \} \indep \ D_i \mid X_i = x$ for all $x \in \mathcal{X}$
+
+- $0 < \Pr(D_i = 1 \mid X_i = x) < 1$ for all $x \in \mathcal{X}$
+
+---
+
+## Identification of ATT under CI and Common Support
+
+$\tau_{ATT} = \mathbb{E}[Y_{i}(1) - Y_{i}(0) | D_i = 1]$ 
+
+- $= \int \mathbb{E}[Y_{i}(1) - Y_{i}(0) | X_i=x, D_i = 1] f(x|D_i=1)dx$ \color{blue}{by law of iterated expectation}^[Recall: $\mathbb{E}[Y] = \mathbb{E}[\mathbb{E}[Y|X]]$ and $\mathbb{E}[X] = \int xf(x)dx$ (continuous)]
+
+
+- $= \int \{\mathbb{E}[Y_{i}(1) | X_i=x, D_i = 1] - \mathbb{E}[Y_{i}(0) | X_i=x, D_i = 1]\} f(x|D_i=1)dx$ \color{blue}{linearity of expectation}
+
+
+
+- $= \int \mathbb{E}[Y_{i} | X_i=x, D_i = 1] - \mathbb{E}[Y_{i} | X_i=x, D_i = 0] f(x|D_i=1)dx$^[Turns out, ATT is identifiable under a weaker set of assumptions. Compare overlap and ignorability assumptions required for identification in ATE v. ATT.]
+
+
+Similarly, $\tau_{ATE} = \mathbb{E}[Y_{i}(1) - Y_{i}(0)]$
+
+- $= \int \mathbb{E}[Y_{i}(1) - Y_{i}(0) | X_i=x] f(x)dx$ 
+
+- $= \int (\mathbb{E}[Y_i | X_i=x, D_i = 1] - \mathbb{E}[Y_i | X_i=x, D_i = 0]) f(x)dx$ 
+
+---
+
+## `Matching` package 
+
+The workhorse of the package:
+
+- `Match(Y, Tr, X, estimand = "ATT", M = 1, exact, Weight...)`
+
+    + By default, the function estimates the ATT, `exact = NULL`, `replace = TRUE`, and uses one-to-one matching (`M = 1`).
+   
+    + Other arguments: (`ties`, `caliper`, `BiasAdjust`, `CommonSupport`)
+    
+    + `Weight` = 2 (Mahalanobis distance), 3 (custom supplied by `Weight.matric`)
+    
+    + use `summary()` on matched object
+
+
+
+## `Matching` package 
+
+Check the balance before and after matching using these functions to create tables:
+
+- `MatchBalance(formula, data, match.out...)`
+
+- `baltest.collect(matchbal.out, var.names)`
+
+## Alternatively, the `MatchIt` package 
+
+- `matchit(formula, data, method = "nearest", discard = "none", distance = "logit")`
+
+- `method` = `["genetic", "exact", "subclass", "nearest", ...]`
+
+- I.e. `nearest` selects the $r$ (default = 1) best control matches for each individual in the treatment group (excluding discarded).
+
+
+## Job Training Example (Lalonde 1986)
+
+```{r echo = TRUE}
+data(lalonde)
+```
+
+This is a subsample of the original data consisting of the National Supported Work Demonstration (NSW) treated group and the comparison sample from the Population Survey of Income Dynamics (PSID). (non-experimental study)
+
+- `treat`: participation in the job training program 
+- `re78`: 1978 real earnings
+
+
+## Job Training Example (Lalonde 1986)
+
+A naive comparison of earnings for those who participated and those who did not.
+
+\small
+```{r echo = TRUE}
+lalonde %>% group_by(treat) %>%
+   summarise(Income1978 = mean(re78), n = n())
+```
+\normalsize
+
+---
+
+\small
+Specify pre-treatment covariates to match on.
+```{r echo = TRUE}
+bal_form <- formula(treat ~ age + educ + black + hispan + 
+                      nodegree + married + re74 + re75 + re78)
+# or
+# as.formula(paste("treat~",paste(names(lalonde)[-1],collapse="+")))
+```
+\normalsize
+
+Let's check the pre-matching balance.
+
+\small
+```{r echo = TRUE}
+mb_unmatched <- MatchBalance(bal_form, 
+                             data = lalonde, print.level=0)
+tab_unmatched <- baltest.collect(mb_unmatched, 
+                                 var.names = colnames(lalonde)[-1], 
+                                 after = FALSE)
+```
+
+\normalsize
+
+---
+
+```{r results="asis"}
+print(xtable(tab_unmatched[, 1:7], label='tab:unmatched-bal',caption='Covariate Balance in Unmatched Data'), caption.placement='top', scalebox='0.80', comment=FALSE)
+```
+
+---
+
+Now, check the post-matching balance.
+
+\tiny
+```{r echo = TRUE}
+vars <- c("age", "educ", "black", "hispan", "nodegree", "married", "re74", "re75", "re78")
+
+match_out <- Match(Y= lalonde$re78, Tr = lalonde$treat, 
+                   X = lalonde[, vars], exact = FALSE, Weight = 2)
+
+mb_matched <- MatchBalance(bal_form, data= lalonde, 
+                           match.out = match_out, print.level=0)
+
+tab_matched <- baltest.collect(mb_matched, var.names = colnames(lalonde)[-1],
+                               after = TRUE)
+```
+
+\normalsize
+```{r results="asis"}
+print(xtable(tab_matched[, 1:7], label='tab:matched-bal',caption='Covariate Balance in Matched Data'), caption.placement='top', scalebox='0.75', comment=FALSE)
+```
+
+---
+
+```{r echo = TRUE}
+summary(match_out)
+```
+
+---
+
+## Propensity Score
+
+$\pi(X_i) \equiv Pr(D_i = 1|X_i)$
+
+What is the functional form of $\hat{\pi}(\cdot)$?
+
+- I.e. estimate propensity scores using logistic regression.
+
+- Exercise: Try matching on a PS! Create a balance table before and after matching.
+
+- Workflow: $\hat{\pi}(X_i)$ $\to$ `Match` $\to$ `MatchBalance` $\to$ `baltest.collect`
+
+## Propensity Score
+
+```{r echo = TRUE}
+ps_model <- glm(bal_form, data = lalonde, 
+                family = binomial(link = logit))
+#ps_model$fitted.values
+#lalonde$pscore <- predict(ps_model, type = "response")
+```
+
+```{r, fig.width=5, fig.height=2, fig.align="center"}
+ggplot(data.frame(treat = lalonde$treat, ps = ps_model$fitted.values), 
+       aes(x = ps, color = as.factor(treat))) + 
+  geom_line(stat="density", size=2, alpha=0.8) + 
+  theme_minimal() + 
+  xlab("Propensity Score") + 
+  scale_color_discrete(labels = c("No Program", "Program")) + 
+  labs(color = "Treatment")
+```
+
+---
+
+Matching on the PS.
+```{r echo = TRUE}
+match_pscore <- Match(Y = lalonde$re78, 
+                      Tr = lalonde$treat, 
+                      X = ps_model$fitted.values)
+#summary(match_pscore)
+```
+
+```{r fig.width=5, fig.height=2, fig.align="center"}
+
+ps_dat <- data.frame(treat = c(lalonde$treat[match_pscore$index.treated], 
+                     lalonde$treat[match_pscore$index.control]),
+          ps = c(ps_model$fitted.values[match_pscore$index.treated],
+                     ps_model$fitted.values[match_pscore$index.control]))
+
+ggplot(ps_dat, aes(x = ps, color = as.factor(treat))) + 
+  geom_line(stat="density", size=2, alpha=0.8) + 
+  theme_minimal() + 
+  xlab("Propensity Score") + 
+  scale_color_discrete(labels = c("No Program", "Program")) + 
+  labs(color = "Treatment")
+```
+
+---
+
+```{r results="asis"} 
+mb_pscore <- MatchBalance(bal_form, data = lalonde, match.out = match_pscore,
+                           print.level = 0)
+
+tab_pscore <- baltest.collect(mb_pscore, var.names = colnames(lalonde)[-c(1,11)])
+
+print(xtable(tab_pscore[, 1:7], caption = "Covariate Balance in Propensity Score Matched Data", 
+             label = "tab:pscore-bal"), caption.placement = "top", scalebox='0.75', comment=FALSE)
+```
+
+
+- How does this compare to our previous approach to matching?
+
+## Weighting
+
+- Idea: weight each observation in the control group such that it looks like the treatment group (i.e., good covariate balance)^[Matching is a special case of weighting!]
+
+- Suppose, there are two types of cats, each with a different probability of receiving treatment $D$. In this example, we can assign the lone cats in the off-diagonal cells a weight of 3.
+
+
+\begin{center}
+ \begin{tabular}{||c c c ||} 
+ \hline
+ & P(D = 1) = 0.75 & P(D = 1) = 0.25\\ [0.5ex] 
+ \hline\hline
+ D = 1 & \includegraphics[scale=0.10]{smiley_cat1} \includegraphics[scale=0.10]{smiley_cat1} \includegraphics[scale=0.10]{smiley_cat1} &  \includegraphics[scale=0.30]{smiley_cat2}\\ 
+ \hline
+ D = 0 & \includegraphics[scale=0.30]{crying_cat1} & \includegraphics[scale=0.10]{crying_cat2} \includegraphics[scale=0.10]{crying_cat2} \includegraphics[scale=0.10]{crying_cat2}\\
+ \hline
+\end{tabular}
+\end{center}
+
+## Inverse Probability Weighting (IPW)
+
+Weighting on the Propensity Score  $\pi(X_i)$
+
+$$\tau_{ATE} = \mathbb{E}\Big[Y_i \cdot \frac{D_i - \hat{\pi}(X_i) }{\hat{\pi}(X_i)\cdot[1-\hat{\pi}(X_i)]}\Big]$$
+
+The sample analog is ($\hat{\tau}_{ATE}$):
+
+$$\frac{1}{N} \sum_{i=1}^{N} \Big\{ Y_i \cdot \frac{D_i - \hat{\pi}(X_i) }{\hat{\pi}(X_i)\cdot[1-\hat{\pi}(X_i)]}  \Big\} = \frac{1}{N} \sum_{i=1}^{N} \Big\{ \frac{D_i \cdot Y_i }{\hat{\pi}(X_i)} \Big\} -  \frac{1}{N} \sum_{i=1}^{N} \Big\{ \frac{(1 - D_i) \cdot Y_i}{[1-\hat{\pi}(X_i)]}  \Big\}$$
+
+
+
+## Inverse Probability Weighting (IPW)
+
+$$\tau_{ATT} = \mathbb{E}\Big[Y_i \cdot \frac{D_i - \hat{\pi}(X_i) }{1-\hat{\pi}(X_i)}\Big] \cdot \mathbb{P}(D_i =1)^{-1}$$
+
+With sample analog:
+
+$$\hat{\tau}_{ATT} = \dfrac{1}{N_1} \sum_{i=1}^{N} \Big\{ Y_i \cdot \frac{D_i - \hat{\pi}(X_i) }{1-\hat{\pi}(X_i)}  \Big\}$$
+
+
+
+# Additional Notes
+
+
+
+
+
+
+
+
+
+
+
+

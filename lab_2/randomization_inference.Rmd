@@ -1,0 +1,564 @@
+---
+title: "Balance Checks and Randomization Inference"
+author: "Annie Chen"
+date: "1/15/2020"
+output: 
+   ioslides_presentation:
+    widescreen: true
+    smaller: true
+    incremental: true 
+    mathjax: local
+    self_contained: FALSE
+    css: style.css 
+#runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+<style>
+div.footnotes {
+  position: absolute;
+  bottom: 0;
+  margin-bottom: 10px;
+  width: 80%;
+  font-size: 0.6em;
+}
+
+pre {
+  font-size: 22px;
+}
+
+</style>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script>
+$(document).ready(function() {
+  $('slide:not(.backdrop):not(.title-slide)').append('<div class=\"footnotes\">');
+
+  $('footnote').each(function(index) {
+    var text  = $(this).html();
+    var fnNum = (index+1).toString();
+    $(this).html(fnNum.sup());
+    var footnote = fnNum + '. ' + text + '<br/>';
+    var oldContent = $(this).parents('slide').children('div.footnotes').html();
+    var newContent = oldContent + footnote;
+    $(this).parents('slide').children('div.footnotes').html(newContent);
+  });
+});
+</script>
+
+
+## Admin
+
+- Wednesday 5:30pm-6:30pm lab
+- Problem set 1 + GitHub/markdown issues?
+- Final project
+
+## Balance in Randomized Experiments
+
+- Randomization balances both observed and unobserved pre-treatment covariates between the treated and untreated in large samples. 
+- <span class="blue">Why check for balance between groups?</span>
+
+- Review of Hypothesis Testing:
+
+- Test-statistic?
+<!-- an observed scalar quantity of interest that describes your data -->
+- P-value?
+<!-- probability of observing the test statistic as large (in magnitude) as the observed value, under the null -->
+
+
+## Balance Checks
+
+- Conduct balance checks with respect to observed pre-treatment covariates 
+- Compare means, standard deviations etc. between the treated and untreated; can also regress treatment indicator on covariates
+- Statistical tests for the difference between groups.
+- Visualizations 
+
+## An example: *Ethnic quotas and Political Mobilization*
+
+- Dunning and Nilekani (2013) investigate the effect of ethnic quotas on redistribution in India.
+<br>
+- Comparing reserved (treated) and unreserved (untreated) council presidencies for Scheduled Castes (SCs) and Scheduled Tribes (STs). 
+<br>
+- Are quotas for council presidencies an effective means of channeling benefits to marginalized groups?
+<br>
+- Unit of analysis is the village council constituency
+<br>
+- Null hypothesis of usual balance tests is $H_0$: treatment and control groups are the same
+
+## *Ethnic quotas and Political Mobilization*
+
+```{r echo = FALSE}
+path <- "~/Desktop/McGill/TA/TA_666/github_618/ta_materials/lab 2"
+```
+
+
+```{r message = FALSE}
+library(foreign)
+library(dplyr)
+
+data = read.dta(file.path(path, "/data/dunning_bal.dta"))
+glimpse(data)
+```
+
+- Try it yourself! Create a balance table for the following covariates, given the treatment variable `scst_reserved_current`. 
+<br>
+
++ `P_ILL`: Mean number of illiterates
++ `MARGWORK_P`: Mean number of marginal workers
++ `No_HH`: Number of households
++ `MAIN_AL_P`: Mean agricultural laborers
++ `MAIN_CL_P`: Mean cultivators
++ `NON_WORK_F`: Mean female nonworkers
+
+## *Ethnic quotas and Political Mobilization*
+
+
+- Choose the covariates to balance on... 
+```{r echo=FALSE}
+#data = data %>% filter(!is.na(scst_reserved_current)) 
+```
+
+```{r}
+vars = data %>%
+  dplyr::select(P_ILL, MARGWORK_P, No_HH, MAIN_AL_P, MAIN_CL_P, NON_WORK_F)
+```
+
+- Calculate the mean and SD by treatment status for each covariate
+
+<!--see ?aggregate(): Splits the data into subsets, computes summary statistics for each -->
+```{r}
+# aggregate(dataframe, groupingvariable, function)
+
+bal.mean = aggregate(vars, by=list(data$scst_reserved_current), 
+                     function(x) mean(x, na.rm =T))
+
+bal.sd = aggregate(vars, by=list(data$scst_reserved_current), 
+                   function(x) sd(x, na.rm =T))
+```
+
+## *Ethnic quotas and Political Mobilization*
+
+<!-- What is the p-value: probability of observing a t-statistic as large in absolute value as
+the observed value, if Group (A) and Group (B) are drawn from the same distribution -->
+
+<!--By default, `t.test()` will use the statistc for unequal variance (Welch's)-->
+```{r}
+# calculate difference in means for each covariate (w/ for loop)
+diff.means <- vector()
+for (i in 1:6) {
+  diff.means[i] <- mean(vars[data$scst_reserved_current==1, i], na.rm = T) - 
+    mean(vars[data$scst_reserved_current==0, i],na.rm = T) 
+}
+
+diff.means
+```
+
+
+```{r}
+# Test the difference in means between conditions for each covariate (using apply)
+# keep the p-values
+diff_means_pval <- function(x) {t.test(vars[data$scst_reserved_current==1, x],
+                                  vars[data$scst_reserved_current==0, x])$p.value}
+
+bal.pv = sapply(1:length(vars), diff_means_pval)
+
+bal.pv
+```
+
+## *Ethnic quotas and Political Mobilization*
+
+```{r}
+# Stack 
+bal = rbind(bal.mean, bal.sd, c(NA, diff.means), c(NA, bal.pv))
+
+# Rearrange
+bal = t(bal)
+bal = bal[-1, 1:6]
+
+# and label the balance table
+colnames(bal) = c("Control_Mean", "Control_SD", "Treat_Mean", 
+                  "Treat_SD", "Diff_Means", "ttest_p-val" )
+```
+
+<!-- number of households and mean female nonworkers have relatively small p-values -->
+
+## *Ethnic quotas and Political Mobilization*
+
+```{r echo=FALSE, message=FALSE}
+library(kableExtra)
+```
+
+
+```{r asis = TRUE}
+as_tibble(bal) %>% 
+  mutate(Covariate = c("P_ILL", "MARGWORK_P", "No_HH", 
+                       "MAIN_AL_P", "MAIN_CL_P", "NON_WORK_F")) %>% 
+  dplyr::select(Covariate, everything()) %>% 
+  kable(type = "text")
+```
+
+<br>   
+   
+- <span class="blue">Why might this procedure be problematic?</span>
+
+
+## You can also visualize Treatment v. Control groups
+
+<!-- use melt() to convert data from wide to long (key-value pairs)-->
+
+```{r}
+library(ggplot2)
+library(reshape2)
+
+# select the relevant variables
+data_plot = data %>% 
+  dplyr::select(P_ILL, MARGWORK_P, No_HH, 
+                MAIN_AL_P, MAIN_CL_P, NON_WORK_F, scst_reserved_current) %>% 
+  # add id and factor treatment variables
+  mutate(id = row_number(),
+         scst_reserved_current = factor(scst_reserved_current, 
+                                        labels = c("Control", "Treatment")))
+
+# Melt the data for easy plotting with facets in ggplot
+data.melt = melt(data_plot, id.vars = c("id", "scst_reserved_current"))
+
+# plot the densities
+bal_plot <- ggplot(data.melt, aes(x = value, fill = scst_reserved_current, 
+                                  color = scst_reserved_current)) +
+  geom_density(alpha=.5) +
+  facet_wrap(~ variable, scales="free") +
+  theme_bw() +
+  theme(legend.position="bottom")
+```
+
+## You can also visualize the Treatment v. Control
+
+```{r echo = FALSE, warning = FALSE, fig.align="center"}
+bal_plot
+```
+
+
+## F-tests
+
+- Testing the joint significance of the difference in means between treated and untreated groups
+<!-- an omnibus test for whether there is a significant difference between treatment and control for all the covariates. -->
+<br>
+- The test-statistic for an F-test is given by (the F-statistic): $$F = \frac{\Big(\frac{RSS_1 - RSS_2}{k_2 - k_1}\Big)}{\Big(\frac{RSS_2}{n - k_2}\Big)}$$ where $k_1$ and $k_2$ are the number of parameters in models 1 and 2, respectively.
+<br>
+- What is the null? 
+- <span class="blue">$H_0: \beta_1 = \beta_2 = ...= \beta_{k-1} = 0$ </span>
+- <span class="blue">$H_a: \beta_j \neq 0$ for $j \in \{1, ..., k-1\}$ </span>
+
+<!-- cannot reject the null that the model with only the intercept is the same as with all the covariates -->
+
+----
+
+```{r message = FALSE}
+pre_bal <- lm(scst_reserved_current ~ P_ILL + MARGWORK_P + No_HH + MAIN_AL_P + MAIN_CL_P + NON_WORK_F, 
+   data = data)
+summary(pre_bal)
+```
+
+```{r echo = FALSE}
+library(stargazer)
+#stargazer(pre_bal, title='OLS Results: Propensity for Treatment', 
+#          style='apsr', keep.stat=c('n', 'f'), type = "text")
+```
+
+
+- What if we discover an imbalance? Can correct imbalance via regression, matching, weighting, etc. 
+- Is it a good idea to control for pre-treatment covariates via linear regression in a randomized experiment?
+<!-- btw, there's some debate about this...assuming that random assignment was implemented correctly, should examination of imbalances play any role in choosing which covariates to adjust for? more on this when we talk about SOO. -->
+
+## Average Treatment Effect 
+
+- Outcome variable (`ave_jobbenefit01`): "...asked citizens whether they had received a job or benefit from the village council in the previous year."
+
+```{r echo = FALSE}
+data = read.dta(file.path(path,"/data/dunning_clust_means.dta"))
+
+dat = data %>%
+  filter(!is.na(ave_jobbenefit01) & !is.na(scst_reserved_current)) 
+```
+
+<!-- Why can we ignore the covariance when calculating the SE?-->
+```{r}
+# Apply the difference in means estimator
+ybar <- tapply(dat$ave_jobbenefit01, 
+               list('treated'= dat$scst_reserved_current), 
+               function(x) mean(x, na.rm = T))
+ybar['1'] - ybar['0']
+
+# Estimate the standard error of the difference in means
+seDiffMeans <- function(y, tx){
+  y1 = y[tx == 1]
+  y0 = y[tx == 0]
+  n1 = length(y1)
+  n0 = length(y0)
+  sqrt(((var(y1)/n1 + var(y0)/n0)))
+}
+
+seDiffMeans(dat$ave_jobbenefit01, dat$scst_reserved_current)
+```
+
+
+## Try computing the difference using bivariate OLS.
+
+> - <span class= "blue"> How does this compare to the difference-in-means estimator? What about the SEs? </span>
+<br>
+
+## Try computing the difference using bivariate OLS.
+
+> - <span class= "blue"> How does this compare to the difference-in-means estimator? What about the SEs? </span>
+<br>
+
+```{r}
+mod.bivariate = lm(ave_jobbenefit01 ~ scst_reserved_current, data=data)
+summary(mod.bivariate)$coefficients
+```
+- Now, re-estimate using robust standard errors.
+
+## Re-estimate using robust standard errors.
+<!-- Heteroskedasticity-Consistent Covariance Matrix Estimation-->
+<!-- HC0 = White's original -->
+<!-- HC2 = robust-->
+<!-- still assuming independence between units (no covariances on the off-diagonals). 
+then, would have to cluster -->
+```{r message= FALSE}
+library(sandwich)
+
+se.bivariate = sqrt(diag(vcovHC(mod.bivariate, type='HC2')))
+stargazer(mod.bivariate, se=list(se.bivariate),
+           keep.stat=c('n'), digits=8, notes = "HC2 Robust SEs", type="text")
+```
+```{r echo = FALSE}
+# library(lmtest)
+# coeftest(mod.bivariate, vcov = vcovHC(mod.bivariate, type = "HC2"), digits=8)
+```
+
+
+## Hypothesis Testing in Randomization Inference
+
+- How can we assess the uncertainty around the $\widehat{ATE}$ of our sample?
+
+<!-- Also known as Permutation Tests for reasons that will become obvious in a bit.-->
+
+<!-- Q: Where does the uncertainty come from? Compare this to model-based inference...In RI, POs are fixed not random variables. -->
+
+- Define the <span class="blue"> sharp </span> null hypothesis as: $$H_0: Y_i(1) - Y_i(0) = 0$$ for all units $i$.
+<!-- In other words, when there is no individual-level effect. -->
+<!-- You may also think of this as H_0: \beta = 0, if that helps.-->
+
+- Note that this is "stronger" than: $$\mathbb{E}[Y_i(1) - Y_i(0)] = 0$$ 
+
+- <div class="red"> What's the difference? Why is the first a stronger statement than the second? </div>
+<!-- What does the first say (individual potential outcomes), what does the second say? -->
+
+## Hypothesis testing in Randomization Inference
+
+- Under the null ($H_0: Y_i(1) = Y_i(0)$), we can construct an exact <footnote> *Exact if all possible random assignments are simulated. The number of permutations can blow up quickly, in which case, it is not practical to simulate them all. See additional notes.*</footnote> sampling distribution for the sample ATE.
+
+- How? Assuming <span font-size:14px>$Y_i(1) = Y_i(0)$</span> means that we observe *both* potential outcomes for unit $i$! Thus, allowing us to simulate all possible randomizations with the full set of potential outcomes.
+
+- Then we ask: "If this null were true, how likely am I to get the estimate that I actually obtained?"
+
+```{r}
+browseURL("https://www.jwilber.me/permutationtest")
+```
+
+## A simple example with some code
+
+Suppose we have a vector of observed outcomes from an experiment with 9 observations where 5 units were treated.
+
+```{r}
+# Observed outcomes
+Y <- c(0, 1, 4, 3, 0, 3, 0, 0, 3)
+
+# Treatment assignment
+d <- c(1, 1, 0, 0, 1, 1, 0, 1, 0)
+
+# compute the sample ATE
+obs.sate <- mean(Y[which(d==1)]) - mean(Y[which(d==0)])
+obs.sate
+```
+
+---- 
+
+Create matrix of all possible treatment assignments for all 9 units.
+
+```{r}
+# number of units
+n <- 9
+
+# units can either be given treatment or not
+D <- c(0,1) 
+
+# permute treatment assignments
+all_permute_treatment <- expand.grid(rep(list(D),n))
+#dim(all_permute_treatment) = 512 x 9
+head(all_permute_treatment)
+```
+
+----
+
+```{r}
+# selecting only the rows where the number of treated is equal to 5
+all_permute_treatment <- all_permute_treatment[rowSums(all_permute_treatment) == 5, ]
+
+#dim(all_permute_treatment) = 126 x 9 (see additional notes)
+
+head(all_permute_treatment, n = 10)
+```
+.
+.
+.
+
+----
+
+We want to simulate a distribution of a test statistic under the sharp null. For example, here we are calculating the sample ATE (the difference-in-means estimator) for each permutation.
+
+```{r}
+permute.sate <- c(length(all_permute_treatment))
+
+for(i in 1:nrow(all_permute_treatment)){
+  D_star <- unlist(all_permute_treatment[i,])
+  permute.sate[i] <- mean(Y[which(D_star==1)]) - mean(Y[which(D_star==0)])
+}
+```
+
+- <span class="red"> Spot the test statistic! </span>
+- We can always replace this with another quantity of interest.
+<footnote> i.e. rank sum statistic</footnote>
+<span color = "blue"> this is part of the appeal of RI </span>
+
+```{r}
+quantile(permute.sate, c(0.025, 0.975))
+```
+
+----
+
+```{r message = FALSE, fig.width=5, fig.height=4, fig.align="center"}
+# this is our sampling distribution!
+library(ggplot2)
+qplot(permute.sate) +
+  labs(x = "Simulated Effect Size", y = "Count") +
+  geom_vline(xintercept = obs.sate, lty =2, col = "red") +
+  theme_bw()
+```
+
+----
+
+- Let's count how many of the simulated values are as large (in magnitude) as the observed ATE. 
+
+```{r}
+# This is a two sided test
+t_star <- length(permute.sate[which(abs(permute.sate) >= abs(obs.sate))])
+# t_star = 22
+```
+
+- Then, divide by the number of permutations to get the <span class="red"> [???] </span>. What did we just compute? <footnote>It's just a counting problem: $$p = \frac{1}{K}\sum_{k=1}^K \mathbb{I} (|\hat{T_k}| \geq |T|)$$ where K is the total number of permutations, and T is the test statistic. $\mathbb{I}(\cdot)$ is the indicator function. </footnote> 
+
+```{r}
+t_star/nrow(all_permute_treatment)
+```
+
+- <span class="red"> How do we interpret this value? </span>
+<!-- Q: how would we calculate a one-tailed test?-->
+<!-- Q: how does this differ from a t-test?-->
+
+----
+
+All this can be done easily with the `ri2` package!
+
+- Key functions: `declare_ra()` and `conduct_ri()`
+
+```{r message = FALSE}
+library(ri2)
+
+# using the same toy example...
+dat_table <- data.frame(Z = d, Y = Y)
+
+# "declare" your randomization procedure: we have 9 observations, 5 of which are treated
+declaration <- declare_ra(N = 9, m = 5)
+
+# Conduct Randomization Inference
+ri <- conduct_ri(
+  formula = Y ~ Z,
+  declaration = declaration,
+  sharp_hypothesis = 0,
+  data = dat_table
+)
+```
+
+----
+
+Look familiar?
+```{r, fig.width=5, fig.height=4, fig.align="center"}
+summary(ri)
+
+plot(ri)
+```
+
+## Number of Permutations
+
+- For $N$ observations, where $n_t$ denotes the number of observations in the treated group, $n_c$ is number of observations in the control group, and $n_t + n_c = N$, the permutation of assignments is: 
+$${N\choose n_t} = \frac{N!}{n_t!(N-n_t)!}= \frac{N!}{n_t! n_c!}$$ 
+<!-- -->
+
+
+- Consider our first example: N = 9, treated = 5, control = 4
+```{r}
+factorial(9)/(factorial(5)*factorial(4))
+```
+
+- What if $N = 50$? In the case where the number of possible randomizations is too large and we cannot obtain an exact distribution, we can rely on Monte Carlo approximation.
+
+
+## Summary of RI Procedure
+1. Define the sharp null and choose a test statistic.
+2. Calculate observed test statistic.
+3. Permute vectors of different possible randomization assignments.
+4. Compute the test statistic for these simulations.
+5. Find the p-value. 
+
+## Inverting Hypothesis Testing to Construct CIs
+
+- Cool story, but RI doesn't tell us anything about the magnitude (effect size)?
+- We "invert" the test...
+- assume additive constant effects...
+- Slight change to the sharp null to be: $$Y_i(1) =  Y_i(0) + \tau$$ for all units. 
+
+## Blocking
+- A real example?
+- Clustering?
+
+
+# Additional Notes
+
+----
+
+```{r, echo=FALSE, eval = FALSE, include = FALSE}
+shinyApp(
+
+  ui = fluidPage(
+    selectInput("region", "Region:",
+                choices = colnames(WorldPhones)),
+    plotOutput("phonePlot")
+  ),
+
+  server = function(input, output) {
+    output$phonePlot = renderPlot({
+      barplot(WorldPhones[,input$region]*1000,
+              ylab = "Number of Telephones", xlab = "Year")
+    })
+  },
+
+  options = list(height = 500)
+)
+```
+
+
