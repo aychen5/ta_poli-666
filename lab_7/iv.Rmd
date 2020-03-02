@@ -1,0 +1,280 @@
+---
+title: "Instrumental Variables"
+author: "Annie Chen"
+date: "February 26, 2020"
+output: 
+  beamer_presentation:
+    incremental: true
+    keep_tex: yes
+    theme: "AnnArbor"
+    colortheme: "dolphin"
+    fonttheme: "structuresmallcapsserif"  
+header-includes:
+- \usepackage{multirow}
+- \usepackage{tikz}
+- \usetikzlibrary{positioning,shapes.geometric,arrows}
+- \usetikzlibrary{decorations.markings}
+- \usepackage{pgfplots}
+- \usepackage{graphicx}
+- \graphicspath{ {./images/} }
+- \newcommand{\indep}{\rotatebox[origin=c]{90}{$\models$}}
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+pacman::p_load(dplyr, ggplot2, haven, xtable, AER)
+```
+
+
+## 
+
+
+```{r echo=FALSE, out.width='50%', fig.align='center'}
+knitr::include_graphics('iv_memes.jpeg')
+```
+
+
+## IV Assumptions
+
+\color{red}{Which are directly testable from data?}
+
+- Ignorability (Exogeneity)
+    +  $\{Y_i(z,d),D_i(1),D_i(0)\}\indep Z_i$ 
+- SUTVA
+    + $D(z) = D(z^{\prime})$ if $z = z^{\prime}$
+    + $Y(z, d) = Y(z^{\prime}, d^{\prime})$
+- Exclusion Restriction
+    + $Y_i(z = 1,d) = Y_i(z = 0,d)$ for $d = 0,1$
+    <!-- + How do we test for the exclusion restriction?  -->
+    <!--     - \color{red}{trick question -- it is NOT testable!} -->
+- Relevance
+    + $Cov(D_i, Z_i) \neq 0$
+- Monotonicity
+    + $D_i(1) \geq D_i(0)$ for all $i$
+ 
+
+
+## Valid Instruments 
+
+- Let's play a game: \color{red}{is $Z$ a valid instrument that identifies a causal effect of $D$ on $Y$?}
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[text centered] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+	    \node[below right = 1 of d, text centered] (e) {$U$};	
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+      \draw[->, line width= 1] (z) --(d);
+      \draw[->, line width= 1] (z) --(y);
+\end{tikzpicture}
+\end{center}
+
+
+## Valid Instruments 
+
+- \color{red}{Can we test the exclusion restriction by checking the association between Z and Y after conditioning on D?}
+
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[rectangle, draw] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+	    \node[below right = 1 of d, text centered] (e) {$U$};	
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+      \draw[->, line width= 1] (z) --(d);
+\end{tikzpicture}
+\end{center}
+
+
+## Valid Instruments 
+
+- and here? Suppose the instrument $Z$ is unobserved, but we have a proxy $V$.
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[text centered] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+	    \node[above left = 1 of d, text centered] (z) {$Z$};
+      \node[left = 1 of z, text centered] (v) {$V$};	
+	    \node[below right = 1 of d, text centered] (e) {$U$};	
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1, bend left] (z) --(d);
+      \draw[->, line width= 1] (z) --(v);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+\end{tikzpicture}
+\end{center}
+
+
+## Valid Instruments 
+
+- Can we make this one work?
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[text centered] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+	    \node[below right = 1 of d, text centered] (e) {$U$};	
+	    \node[above left = 1 of y, text centered] (x) {$X$};	
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1] (x) --(z);
+      \draw[->, line width= 1] (x) --(y);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+      \draw[->, line width= 1] (z) --(d);
+\end{tikzpicture}
+\end{center}
+
+
+
+## Valid Instruments 
+
+- Can we make this one work?^[Note that this is now a conditional instrument and we adjust our assumptions accordingly. I.e., $\{Y(z, d), D(1), D(0)\} \perp Z|X$]
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[text centered] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+	    \node[below right = 1 of d, text centered] (e) {$U$};	
+	    \node[above left = 1 of y, rectangle, draw, text centered] (x) {$X$};	
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1] (x) --(z);
+      \draw[->, line width= 1] (x) --(y);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+      \draw[->, line width= 1] (z) --(d);
+\end{tikzpicture}
+\end{center}
+
+
+## Violating IV Assumptions 
+
+\begin{center}
+    \begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+      \node[text centered] (d) {$D$};
+      \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+	  \node[below right = 1 of d, text centered] (u1) {$U$};	
+  	  \node[right = 2.5 of z, text centered] (u2) {$U$};	
+ 	  \node[left = 2.5 of d, text centered] (u3) {$U$};	
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1, bend left, dashed] (u1) --(d);
+      \draw[->, line width= 1, bend left, dashed] (u1) --(y);
+      \draw[->, line width= 1] (z) --  (d) node[midway, below, sloped] {\tiny{a}} ;
+      \draw[->, line width= 1] (z) --  (d) ;
+      \draw[->, line width= 1, dashed] (u2) --  (z) node[midway, above, sloped]{\tiny{b}} ;
+      \draw[->, line width= 1, dashed] (u2) --  (y) ;
+      \draw[->, line width= 1, dashed] (u3) --  (z) node[midway, above, sloped]{\tiny{c}} ;
+      \draw[->, line width= 1, dashed] (u3) --  (d) ;
+      \draw[->, line width= 1, dashed] (z) --  (y) node[midway, above, sloped]{\tiny{d}} ;
+    \end{tikzpicture}
+\end{center}
+
+    
+## Review LATE Framework
+
+- For unit $i$, if $Z_i \in \{0, 1\}$ is the instrument (encouragement) and $D_i \in \{0, 1\}$ is treatment, then we have 4 principal strata (latent class variable *C*). 
+
+\begin{center}
+\begin{tabular}{l|cc}
+$C_i$ & \multicolumn{2}{c}{$D_i(z)$}\\
+\hline
+ & $Z_i = 1$ & $Z_i = 0$\\
+\hline
+Compliers & \color{blue}{1} & \color{blue}{0}\\
+Always-takers  & \color{blue}{1} & \color{blue}{1} \\
+Never-takers & \color{blue}{0} & \color{blue}{0} \\
+Defiers & \color{blue}{0} & \color{blue}{1}
+\end{tabular}
+\end{center}
+
+- Can we determine which *C* unit $i$ falls under from our observed data? 
+- Say $Z_i = 1$ and $D_i = 0$. What type(s) could unit $i$ be?
+
+
+## IV Estimand and 2SLS Estimator
+
+- Intent-to-treat (ITT) effect: $\mathbb{E}[Y_i(z = 1) - Y_i(z = 0)]$
+- $ITT_d$: $\mathbb{E}[D_i(z = 1) - D_i(z = 0)]$
+- Local Average Treatment Effect (LATE):^[also known as Complier Average Causal Effect (CACE) ref. GG p.144 and p.180] = $\frac{ITT}{ITT_d}$
+<!-- - If $\mathbb{E}[Z, u] = 0$, then $\widehat{2SLS}$ is consistent.^[When $Z$ is binary, this is just the Wald estimator.]  -->
+- Can be estimated with 2SLS assuming monotonicity and excludability.
+
+
+## Weak Instruments
+
+- If instrument(s) are so weak that there is no first stage, the 2SLS distribution is centered on the plim of OLS.
+- Run a joint-significance test (f-test) under the null that your instrument(s) is/are weak.
+- The *rule of thumb* given by Staiger and Stock (1997) is a first-stage F-statistic > 10 (in which case, we may reject the null and conclude the instrument is relevant).^[Stock and Yogo (2005) tabulate the critical values needed to reject null for some tolerable level of relative bias (between OLS and 2SLS estimator).] 
+
+
+## Under Identification 
+
+- Consider this regression model: 
+$$Y = \beta_0  + \beta_1X + \beta_2W+ u$$
+    + $X$ is your endogenous regressor
+    + $W$ is an exogenous covariate
+    + You need one instrument, $Z$, to *just-*idenitify the IV model. 
+
+- Now suppose you have >1 endogenous regressors:
+$$Y = \beta_0  + \beta_1X_1 + \beta_2X_2 + ... \beta_kX_k + \gamma W+ u$$
+    + $X_1, X_2, ..., X_k$ are your $k$ endogenous regressors
+    + And you have $Z_1, ..., Z_m$ instruments
+    + Where $m < k$ = underidenfication, $m > k$ = overid, $m=k$ is just-identified.
+
+
+
+
+
+## Over Identification
+
+<!-- - Correlation between instrument(s) and the error term (in the reduced form) violates IV assumptions. -->
+- When you have more instruments than endogenous regressors, you can conduct an overidentification test.
+- Sargan-Hansen Test ($\mathcal{J}$-test): the test statistic is $\mathcal{J}= mF$ where $F$ is the F-statistic for the null that coefficients are jointly zero in $\hat{u} = \beta_0 + \beta_1Z_1 + ... + \beta_mZ_m + \gamma W + \nu$.
+- $\mathcal{J} \sim \mathcal{X}^2_{m-k}$ ($k$ is number of endogenous regressors, $m$ is number of instruments)
+- Null hypothesis is that all instruments are uncorrelated with $\hat{u}$
+- Assumes homoskedasticity^[if heteroskedastic, see Kleibergen–Paap rk Wald statistic]
+- \color{red}{Is this really a test for exogeneity?}
+
+
+
+
+## `AER::ivreg()` 
+
+
+```{r eval = FALSE, echo = TRUE}
+ivmod <- ivreg(y ~ x1 + w1 | w1 + z1 + z2, data)
+summary(ivmod, diagnostics = TRUE)$diagnostics
+```
+
+
+```{r echo = FALSE}
+tbl8 <- read_dta("maketable8.dta") %>%
+  filter(baseco == 1) %>%
+  mutate(
+    euro1900 = (euro1900 / 100)
+  )
+
+m8c1 <- ivreg(logpgp95 ~ avexpr | euro1900 + logem4, data = tbl8)
+summary(m8c1, diagnostics = TRUE)$diagnostics
+```
+
+# ADDITIONAL NOTES
+
+## Limited Information Maximum Likelihood (LIML)
+
+- Alternative to 2SLS is LIML estimator, which has better small sample properties than 2SLS
+
+
+
+
+

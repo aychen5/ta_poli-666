@@ -1,0 +1,502 @@
+\documentclass[ignorenonframetext,]{beamer}
+\setbeamertemplate{caption}[numbered]
+\setbeamertemplate{caption label separator}{: }
+\setbeamercolor{caption name}{fg=normal text.fg}
+\beamertemplatenavigationsymbolsempty
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+\usetheme[]{AnnArbor}
+\usecolortheme{dolphin}
+\usefonttheme{structuresmallcapsserif}
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\newif\ifbibliography
+\hypersetup{
+            pdftitle={Instrumental Variables},
+            pdfauthor={Annie Chen},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+
+% Prevent slide breaks in the middle of a paragraph:
+\widowpenalties 1 10000
+\raggedbottom
+
+\AtBeginPart{
+  \let\insertpartnumber\relax
+  \let\partname\relax
+  \frame{\partpage}
+}
+\AtBeginSection{
+  \ifbibliography
+  \else
+    \let\insertsectionnumber\relax
+    \let\sectionname\relax
+    \frame{\sectionpage}
+  \fi
+}
+\AtBeginSubsection{
+  \let\insertsubsectionnumber\relax
+  \let\subsectionname\relax
+  \frame{\subsectionpage}
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+\usepackage{multirow}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows}
+\usetikzlibrary{decorations.markings}
+\usepackage{pgfplots}
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+\newcommand{\indep}{\rotatebox[origin=c]{90}{$\models$}}
+
+\title{Instrumental Variables}
+\author{Annie Chen}
+\date{February 26, 2020}
+
+\begin{document}
+\frame{\titlepage}
+
+\begin{frame}{}
+
+\begin{center}\includegraphics[width=0.5\linewidth]{iv_memes} \end{center}
+
+\end{frame}
+
+\begin{frame}{IV Assumptions}
+
+\color{red}{Which are directly testable from data?}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  Ignorability (Exogeneity)
+
+  \begin{itemize}[<+->]
+  \tightlist
+  \item
+    \(\{Y_i(z,d),D_i(1),D_i(0)\}\indep Z_i\)
+  \end{itemize}
+\item
+  SUTVA
+
+  \begin{itemize}[<+->]
+  \tightlist
+  \item
+    \(D(z) = D(z^{\prime})\) if \(z = z^{\prime}\)
+  \item
+    \(Y(z, d) = Y(z^{\prime}, d^{\prime})\)
+  \end{itemize}
+\item
+  Exclusion Restriction
+
+  \begin{itemize}[<+->]
+  \tightlist
+  \item
+    \(Y_i(z = 1,d) = Y_i(z = 0,d)\) for \(d = 0,1\) 
+  \end{itemize}
+\item
+  Relevance
+
+  \begin{itemize}[<+->]
+  \tightlist
+  \item
+    \(Cov(D_i, Z_i) \neq 0\)
+  \end{itemize}
+\item
+  Monotonicity
+
+  \begin{itemize}[<+->]
+  \tightlist
+  \item
+    \(D_i(1) \geq D_i(0)\) for all \(i\)
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Valid Instruments}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  Let's play a game:
+  \color{red}{is $Z$ a valid instrument that identifies a causal effect of $D$ on $Y$?}
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[text centered] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+        \node[below right = 1 of d, text centered] (e) {$U$};   
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+      \draw[->, line width= 1] (z) --(d);
+      \draw[->, line width= 1] (z) --(y);
+\end{tikzpicture}
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Valid Instruments}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  \color{red}{Can we test the exclusion restriction by checking the association between Z and Y after conditioning on D?}
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[rectangle, draw] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+        \node[below right = 1 of d, text centered] (e) {$U$};   
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+      \draw[->, line width= 1] (z) --(d);
+\end{tikzpicture}
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Valid Instruments}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  and here? Suppose the instrument \(Z\) is unobserved, but we have a
+  proxy \(V\).
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[text centered] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+        \node[above left = 1 of d, text centered] (z) {$Z$};
+      \node[left = 1 of z, text centered] (v) {$V$};    
+        \node[below right = 1 of d, text centered] (e) {$U$};   
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1, bend left] (z) --(d);
+      \draw[->, line width= 1] (z) --(v);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+\end{tikzpicture}
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Valid Instruments}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  Can we make this one work?
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[text centered] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+        \node[below right = 1 of d, text centered] (e) {$U$};   
+        \node[above left = 1 of y, text centered] (x) {$X$};    
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1] (x) --(z);
+      \draw[->, line width= 1] (x) --(y);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+      \draw[->, line width= 1] (z) --(d);
+\end{tikzpicture}
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Valid Instruments}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  Can we make this one work?\footnote<.->{Note that this is now a
+    conditional instrument and we adjust our assumptions accordingly.
+    I.e., \(\{Y(z, d), D(1), D(0)\} \perp Z|X\)}
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+     \node[text centered] (d) {$D$};
+     \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+        \node[below right = 1 of d, text centered] (e) {$U$};   
+        \node[above left = 1 of y, rectangle, draw, text centered] (x) {$X$};   
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1] (x) --(z);
+      \draw[->, line width= 1] (x) --(y);
+      \draw[->, line width= 1, bend left, dashed] (e) --(d);
+      \draw[->, line width= 1, bend left, dashed] (e) --(y);
+      \draw[->, line width= 1] (z) --(d);
+\end{tikzpicture}
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Violating IV Assumptions}
+
+\begin{center}
+    \begin{tikzpicture}[node distance=5cm,auto,>=latex', scale =1.5, transform shape]
+      \node[text centered] (d) {$D$};
+      \node[right = 2 of d, text centered] (y) {$Y$};
+      \node[above left = 1 of d, text centered] (z) {$Z$};
+      \node[below right = 1 of d, text centered] (u1) {$U$};    
+      \node[right = 2.5 of z, text centered] (u2) {$U$};    
+      \node[left = 2.5 of d, text centered] (u3) {$U$}; 
+      \draw[->, line width= 1] (d) --(y);
+      \draw[->, line width= 1, bend left, dashed] (u1) --(d);
+      \draw[->, line width= 1, bend left, dashed] (u1) --(y);
+      \draw[->, line width= 1] (z) --  (d) node[midway, below, sloped] {\tiny{a}} ;
+      \draw[->, line width= 1] (z) --  (d) ;
+      \draw[->, line width= 1, dashed] (u2) --  (z) node[midway, above, sloped]{\tiny{b}} ;
+      \draw[->, line width= 1, dashed] (u2) --  (y) ;
+      \draw[->, line width= 1, dashed] (u3) --  (z) node[midway, above, sloped]{\tiny{c}} ;
+      \draw[->, line width= 1, dashed] (u3) --  (d) ;
+      \draw[->, line width= 1, dashed] (z) --  (y) node[midway, above, sloped]{\tiny{d}} ;
+    \end{tikzpicture}
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Review LATE Framework}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  For unit \(i\), if \(Z_i \in \{0, 1\}\) is the instrument
+  (encouragement) and \(D_i \in \{0, 1\}\) is treatment, then we have 4
+  principal strata (latent class variable \emph{C}).
+\end{itemize}
+
+\begin{center}
+\begin{tabular}{l|cc}
+$C_i$ & \multicolumn{2}{c}{$D_i(z)$}\\
+\hline
+ & $Z_i = 1$ & $Z_i = 0$\\
+\hline
+Compliers & \color{blue}{1} & \color{blue}{0}\\
+Always-takers  & \color{blue}{1} & \color{blue}{1} \\
+Never-takers & \color{blue}{0} & \color{blue}{0} \\
+Defiers & \color{blue}{0} & \color{blue}{1}
+\end{tabular}
+\end{center}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  Can we determine which \emph{C} unit \(i\) falls under from our
+  observed data?
+\item
+  Say \(Z_i = 1\) and \(D_i = 0\). What type(s) could unit \(i\) be?
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{IV Estimand and 2SLS Estimator}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  Intent-to-treat (ITT) effect: \(\mathbb{E}[Y_i(z = 1) - Y_i(z = 0)]\)
+\item
+  \(ITT_d\): \(\mathbb{E}[D_i(z = 1) - D_i(z = 0)]\)
+\item
+  Local Average Treatment Effect (LATE):\footnote<.->{also known as
+    Complier Average Causal Effect (CACE) ref. GG p.144 and p.180} =
+  \(\frac{ITT}{ITT_d}\) 
+\item
+  Can be estimated with 2SLS assuming monotonicity and excludability.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Weak Instruments}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  If instrument(s) are so weak that there is no first stage, the 2SLS
+  distribution is centered on the plim of OLS.
+\item
+  Run a joint-significance test (f-test) under the null that your
+  instrument(s) is/are weak.
+\item
+  The \emph{rule of thumb} given by Staiger and Stock (1997) is a
+  first-stage F-statistic \textgreater{} 10 (in which case, we may
+  reject the null and conclude the instrument is
+  relevant).\footnote<.->{Stock and Yogo (2005) tabulate the critical
+    values needed to reject null for some tolerable level of relative
+    bias (between OLS and 2SLS estimator).}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Under Identification}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  Consider this regression model:
+  \[Y = \beta_0  + \beta_1X + \beta_2W+ u\]
+
+  \begin{itemize}[<+->]
+  \tightlist
+  \item
+    \(X\) is your endogenous regressor
+  \item
+    \(W\) is an exogenous covariate
+  \item
+    You need one instrument, \(Z\), to \emph{just-}idenitify the IV
+    model.
+  \end{itemize}
+\item
+  Now suppose you have \textgreater{}1 endogenous regressors:
+  \[Y = \beta_0  + \beta_1X_1 + \beta_2X_2 + ... \beta_kX_k + \gamma W+ u\]
+
+  \begin{itemize}[<+->]
+  \tightlist
+  \item
+    \(X_1, X_2, ..., X_k\) are your \(k\) endogenous regressors
+  \item
+    And you have \(Z_1, ..., Z_m\) instruments
+  \item
+    Where \(m < k\) = underidenfication, \(m > k\) = overid, \(m=k\) is
+    just-identified.
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Over Identification}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  When you have more instruments than endogenous regressors, you can
+  conduct an overidentification test.
+\item
+  Sargan-Hansen Test (\(\mathcal{J}\)-test): the test statistic is
+  \(\mathcal{J}= mF\) where \(F\) is the F-statistic for the null that
+  coefficients are jointly zero in
+  \(\hat{u} = \beta_0 + \beta_1Z_1 + ... + \beta_mZ_m + \gamma W + \nu\).
+\item
+  \(\mathcal{J} \sim \mathcal{X}^2_{m-k}\) (\(k\) is number of
+  endogenous regressors, \(m\) is number of instruments)
+\item
+  Null hypothesis is that all instruments are uncorrelated with
+  \(\hat{u}\)
+\item
+  Assumes homoskedasticity\footnote<.->{if heteroskedastic, see
+    Kleibergen--Paap rk Wald statistic}
+\item
+  \color{red}{Is this really a test for exogeneity?}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{\texttt{AER::ivreg()}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ivmod <-}\StringTok{ }\KeywordTok{ivreg}\NormalTok{(y }\OperatorTok{~}\StringTok{ }\NormalTok{x1 }\OperatorTok{+}\StringTok{ }\NormalTok{w1 }\OperatorTok{|}\StringTok{ }\NormalTok{w1 }\OperatorTok{+}\StringTok{ }\NormalTok{z1 }\OperatorTok{+}\StringTok{ }\NormalTok{z2, data)}
+\KeywordTok{summary}\NormalTok{(ivmod, }\DataTypeTok{diagnostics =} \OtherTok{TRUE}\NormalTok{)}\OperatorTok{$}\NormalTok{diagnostics}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##                  df1 df2  statistic      p-value
+## Weak instruments   2  60 17.4114496 1.089283e-06
+## Wu-Hausman         1  60 34.3521510 2.093826e-07
+## Sargan             1  NA  0.1457748 7.026062e-01
+\end{verbatim}
+
+\end{frame}
+
+\section{ADDITIONAL NOTES}\label{additional-notes}
+
+\begin{frame}{Limited Information Maximum Likelihood (LIML)}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  Alternative to 2SLS is LIML estimator, which has better small sample
+  properties than 2SLS
+\end{itemize}
+
+\end{frame}
+
+\end{document}

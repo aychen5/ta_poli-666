@@ -1,0 +1,409 @@
+---
+title: "Diff-in-Diff and Fixed Effects"
+author: "Annie Chen"
+date: "February 12, 2020"
+output: 
+  beamer_presentation:
+    incremental: true
+    keep_tex: yes
+    theme: "AnnArbor"
+    colortheme: "dolphin"
+    fonttheme: "structuresmallcapsserif"  
+header-includes:
+- \usepackage{multirow}
+- \usepackage{graphicx}
+- \graphicspath{ {./images/} }
+- \DeclareUnicodeCharacter{2212}{-}
+- \newcommand{\indep}{\rotatebox[origin=c]{90}{$\models$}}
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning = FALSE)
+```
+
+
+```{r echo = FALSE}
+pacman::p_load(dplyr, ggplot2, xtable, haven, sandwich, lmtest, stargazer, rbounds, texreg)
+```
+
+
+## Pset 5
+
+- `R` code for plotting effect of observed covariates
+
+## Review of D-i-D
+
+Fill in the blanks:
+
+```{r echo=FALSE, out.width='60%', fig.align='center'}
+knitr::include_graphics('d-i-d_graph2.png')
+```
+
+## Review of D-i-D
+
+
+- What is the causal estimand in a D-i-D? 
+    + The ATT in the post-treatment period: $\mathbb{E}[Y_{i1}(1) - Y_{i1}(0) | D_i = 1]$
+
+## D-i-D Estimation with Regression 
+
+$$Y_{it} = \alpha + \beta_1Treated_{i} + \beta_2Period_{t} + \beta_3(Treated_i \times Period_t) + u_{it}$$
+
+- $\beta_1$ captures pre-existing differences between treated and control while $\beta_2$ is the change over time common to both groups.
+
+- Same as two-way fixed effects? What happens in D-i-D model if I include both unit and time FE? 
+$$Y_{it} = \alpha + \delta_i + \tau_t + \beta_3(Treated_{i} \times Period_{t}) + u_{it}$$
+
+
+## Voter Graditude Example (Bectel and Hainmueller. 2011)
+
+- Unit of analysis is electoral districts. 
+
+- Treatment is `Flooded`, a binary variable indicating whether an electoral district was directly affected by the 2002 flood.^[Federal elections are set exogenously by the German Constitution.] 
+
+- The dependent variable is the SPD PR vote share for a given electoral district.^[Models 4, 7, and 10 are the first-differenced DID regressions with the DV as the change in vote share between two election periods.]
+
+##
+
+- Interested in $\mathbb{E}[Y_{i1, 2002} | D_i = 1] - \mathbb{E}[Y_{i0, 2002} | D_i = 1]$ 
+
+- \color{black}{Assume} \color{blue}{$E[Y_{0i, 2002} - Y_{0i, 1998}|D_{i} = 1] = E[Y_{0i, 2002} - Y_{0i, 1998}|D_{i} = 0]$}
+    + \color{black}{Read: "In the absence of the flood, the average SPD vote share in the affected districts would have followed a similar trend as the average SPD vote share in unaffected districts."}
+
+- $\hat{Y}_{it} = \hat{\nu}_{i} + \hat{\delta}_{t} + \hat{\beta}D_{it} + X_{it}^{T}\hat{\alpha} + \hat{\epsilon}_{it}$ 
+    + where $\hat{\nu}_{i}$ and $\hat{\delta}_{t}$ are district and time fixed effects respectively.
+    
+    
+## 
+
+```{r echo = FALSE}
+#Load all data. (1994–1998, 1998_2002) 
+all_data <- bind_rows(
+  read_dta("data/1994_1998.dta") %>% mutate(data_period = "1994–1998"),
+  read_dta("data/1998_2002.dta")%>% mutate(data_period = "1998–2002"),
+  read_dta("data/1998_2005.dta")%>% mutate(data_period = "1998–2005"),
+  read_dta("data/1998_2009.dta")%>% mutate(data_period = "1998–2009"))
+#write.csv(all_data, file = "data/all_data.csv")
+```
+
+- `Flooded` and `PostPeriod` are equivalent to the interaction between Treatment and Period (Treatment = 1 are flooded districts and Period = 1 is post-treatment)
+
+\small
+```{r}
+all_data %>% 
+  filter(data_period == "1998–2002") %>% 
+  dplyr::select(c("wkr", "year", "spd_z_vs", 
+                  "Flooded", "PostPeriod")) %>% 
+  head()
+```
+\normalsize
+
+
+## First-Difference Estimator
+
+$\Delta Y_{it} = \beta \Delta D_{it} +  \Delta u_{it}$ (first, without covariates)
+
+
+```{r}
+library(plm)
+fd_mod <- all_data %>% 
+  filter(data_period == "1998–2002") %>% 
+  plm(data = ., index = c("wkr"), 
+      model = "fd", # first difference estimator
+      formula = spd_z_vs ~ Flooded * PostPeriod)
+```
+
+
+## First-Difference Estimator
+
+\tiny
+```{r echo = FALSE}
+summary(fd_mod)
+```
+\normalsize
+
+
+## Correcting Standard Errors
+
+```{r}
+# this does not support twoway clustering... 
+coeftest(fd_mod, vcov. = vcovHC(fd_mod, type = "HC2", 
+                                cluster = "group"))
+```
+
+
+
+<!-- ## Fixed Effects (LSDV approach)  -->
+
+- Consider the least squares dummy variable model (LSDV)
+
+\small
+```{r}
+# Gives the same effect!
+lm(spd_z_vs ~ Flooded + factor(wkr) + factor(PostPeriod) - 1, 
+   data=all_data %>%
+  filter(data_period == "1998–2002"))
+```
+\normalsize
+
+## Fixed Effects via Demeaning
+
+$\tilde{Y}_{i} = \beta \tilde{D}_{i} +  \tilde{u}_{i}$
+
+\small
+```{r}
+all_data %>% 
+  filter(data_period == "1998–2002") %>% 
+  plm(data = ., index = c("wkr", "PostPeriod"), 
+      model = "within", # within estimator 
+      formula = spd_z_vs ~ Flooded * PostPeriod) %>% 
+  coeftest(., vcov. = vcovHC(., type="HC2"))
+```
+\normalsize
+
+```{r eval = FALSE, echo = FALSE}
+str(demean_mod)
+demean_mod$vcov
+vcovHC(demean_mod, type="HC2", cluster = "group")
+```
+
+
+- When $T = 2$, demeaning and first-difference estimators are equivalent!
+
+## Including covariates
+
+- Exercise: Carefully select covariates ($\textbf{X}_{it}$) and reestimate the new model including these covariates: $\hat{Y}_{it} = \hat{\nu}_{i} + \hat{\delta}_{t} + \hat{\beta}D_{it} + X_{it}^{T}\hat{\alpha} + \hat{\epsilon}_{it}$. 
+
+- Assume that these are all _ _ _ - _ _ _ _ _ _ _ _ _  covariates. 
+
+```{r}
+all_data %>% 
+  dplyr::select(starts_with("xx")) %>% 
+  colnames()
+```
+
+
+## Including covariates
+
+\small
+```{r}
+form_covars <- spd_z_vs ~ Flooded * PostPeriod +
+                  # controls
+                  xxpopdensity_ + # share pop density
+                  xxshpop_o60_ + # share pop over 60
+                  xxpopnetinp1000_ + # share pop outflow
+                  xxue_ + # unemployment
+                  xxshagric_ + # employment share (agriculture) 
+                  xxshmanu_ + # employment share (manufacturing)        
+                  xxshtradservice_ + # employment share (trade) 
+                  xxshotherservice_ + # employment share (other services)
+                  xxshforeign_ +# share of foreigners
+                  xxsinc_SPD # SPD incumbent in Land
+```
+\normalsize
+
+---
+
+\small
+```{r}
+full_mod <- all_data %>% 
+  filter(data_period == "1998–2002") %>% 
+  plm(data = ., index = c("wkr", "PostPeriod"), 
+      model = "within", form_covars)
+```
+\normalsize
+
+\tiny
+```{r results = 'asis', echo = FALSE}
+full_mod %>% 
+  texreg(header=FALSE) 
+```
+\normalsize
+
+## Parallel Trends Assumption 
+
+- $\mathbb{E}[Y_{i1}(0) - Y_{i0}(0)| D_i = 1] = \mathbb{E}[Y_{i1}(0) - Y_{i0}(0)| D_i = 0]$
+
+- Check \color{blue}{leads}\color{black}{: 1994 - 1998}
+```{r}
+all_data %>% 
+  filter(data_period == "1994–1998") %>% 
+  plm(data = ., index = c("wkr"), 
+    model = "fd", 
+    formula = spd_z_vs ~ Flooded * PostPeriod)
+```
+
+- The more pre-treatment periods the better!
+
+
+
+## Visual Inspection of Parallel Trends Assumption
+
+<!-- will not make you do this.. -->
+
+```{r echo = FALSE}
+data6a <- read_dta("data/pollingdata.dta")
+data6a <- data6a[order(data6a$month),]
+data6a$monthn <- as.numeric(as.factor(data6a$month))
+data6a <- data6a[data6a$monthn<=9,]
+data6a$var18 <- rep(c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep"),each=1)
+```
+
+
+```{r echo = FALSE, fig.align="center",out.width='80%'}
+monthlabs <- c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep")
+
+suppSPD <- ggplot(data = data6a, aes(x = factor(monthn), y = spdvi_trtd_mn_allv)) +
+  geom_point(aes(col="FL")) +
+  geom_errorbar(aes(ymin = spdvi_trtd_clo_allv, 
+                    ymax = spdvi_trtd_chi_allv), width = 0.3) +
+  geom_line(aes(x = monthn, y = spdvi_trtd_mn_allv)) +
+  geom_point(aes(x = monthn, y = spdvi_ctl_mn_allv, col="NFL")) +
+  geom_errorbar(aes(ymin = spdvi_ctl_clo_allv, ymax = spdvi_ctl_chi_allv),
+                width = 0.3, col = "blue") +
+  geom_line(aes(x = monthn, y = spdvi_ctl_mn_allv), 
+            col = "blue", lty = 2) +
+  labs(x = "Monthly Polls 2002", y = "% voters intending  \n  to vote for SPD") +
+  scale_x_discrete(breaks = 1:9, labels = monthlabs) +
+  annotate("rect", xmin = 7, xmax = Inf, ymin=25, ymax=Inf, alpha = 0.3) +
+  scale_color_manual(name="", 
+                        labels = c("Affected", 
+                                   "Unaffected"), 
+                        values = c("NFL"="blue", 
+                                   "FL"="black")) +
+  theme_bw()
+
+
+suppCDU <- ggplot(data = data6a, aes(x = factor(monthn), y = cduvi_trtd_mn_allv)) +
+  geom_point(aes(col="FL")) +
+  geom_errorbar(aes(ymin = cduvi_trtd_clo_allv, 
+                    ymax = cduvi_trtd_chi_allv), width = 0.3) +
+  geom_line(aes(x = monthn, y = cduvi_trtd_mn_allv)) +
+  geom_point(aes(x = monthn, y = cduvi_ctl_mn_allv,
+                 col="NFL")) +
+  geom_errorbar(aes(ymin = cduvi_ctl_clo_allv, 
+                    ymax = cduvi_ctl_chi_allv), 
+                width = 0.3, col = "blue") +
+  geom_line(aes(x = monthn, y = cduvi_ctl_mn_allv), 
+            col = "blue", lty = 2) +
+  labs(x = "Monthly Polls 2002", y = "% voters intending \n to vote for CDU/CSU") +
+  scale_x_discrete(breaks = 1:9, labels= monthlabs) +
+  annotate("rect", xmin=7, xmax=Inf, ymin=25, ymax=Inf, alpha = 0.3) +
+  scale_color_manual(name="", 
+                        labels = c("Affected", 
+                                   "Unaffected"), 
+                        values = c("NFL"="blue", 
+                                   "FL"="black")) +
+  theme_bw()
+
+gridExtra::grid.arrange(suppSPD, suppCDU, nrow = 2, ncol = 1)
+```
+
+
+## More Diagnostics
+
+```{r echo = FALSE, fig.align="center", out.width='80%'}
+data <- read.table("data/DIDplotestimates.txt")
+data <- data.frame(cbind(rep(c(0,1), length=(nrow(data))),
+                data,
+                data[,1]-data[,2]*1.96,
+                data[,1]+data[,2]*1.96))
+data$year <- c(rep(1994,2),
+               rep(1998,2),
+               rep(2002,2),
+               rep(2005,2),
+               rep(2009,2))
+colnames(data) <- c("W","PE","SE","LB","UB","year")
+perc <- ggplot() +
+  geom_point(data = data[1:5,], 
+             aes(x = data$year[data$W==0], 
+                 y = data$PE[data$W==0], col = "NFL")) +
+  geom_errorbar(aes(x = data$year[data$W==0],
+                    ymin = data$LB[data$W==0], 
+                    ymax = data$UB[data$W==0]), 
+                width = 0.3, col = "blue") +
+  geom_line(aes(x = data$year[data$W==0], 
+                y = data$PE[data$W==0]),
+            col = "blue", lty = 2, group = 5) +
+  geom_point(data = data[6:10,], 
+             aes(x = data$year[data$W==1], 
+                 y = data$PE[data$W==1], col = "FL")) +
+  geom_errorbar(aes(x = data$year[data$W==1],
+                    ymin = data$LB[data$W==1], 
+                    ymax = data$UB[data$W==1]),
+                width = 0.3) +
+  geom_line(aes(x = data$year[data$W==1], 
+                y = data$PE[data$W==1]), group = 5) +
+  labs(x = "Election Year", 
+       y = "% of Voters intending to vote for SPD",
+       title = "Trends for SPD PR Vote Share in Affected versus Unaffected Districts") +
+  scale_color_manual(name="", 
+                        labels = c("Affected", 
+                                   "Unaffected"), 
+                        values = c("NFL"="blue", 
+                                   "FL"="black")) +
+ # scale_x_discrete(breaks = 1:5, 
+               #   labels = c("1994","1998","2002","2005","2009")) +
+  theme_bw()
+perc
+```
+
+## Competing Explanations
+
+- A competing hypothesis involves the possible confounding salience of the Iraq war issue during the 2009 campaign.
+
+```{r echo = FALSE}
+data7 <- read_dta("data/touse_issues_graphs.dta")
+data7 <- data7[order(data7$month),]
+data7$monthn <- as.numeric(as.factor(data7$month))
+data7 <- data7[data7$monthn<=9,]
+data7$var18 <- rep(c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep"),each=2)
+```
+
+```{r echo = FALSE, fig.align="center", out.width='70%'}
+ggplot() +
+  geom_point(data = data7[data7$east==1,], 
+             aes(x = factor(data7$monthn[data7$east==1]), 
+                 y = data7$floodis_spd[data7$east==1],
+                 col = "FL")) +
+  geom_errorbar(aes(x = data7$monthn[data7$east==1],
+                    ymin = data7$floodis_spd_clo[data7$east==1], 
+                    ymax = data7$floodis_spd_chi[data7$east==1]), 
+                width = 0.3) +
+  geom_line(aes(x = data7$monthn[data7$east==1], 
+                y = data7$floodis_spd[data7$east==1])) +
+  geom_point(data = data7[data7$east==1,], 
+             aes(x = data7$monthn[data7$east==1], 
+                 y = data7$iraqis_spd[data7$east==1],
+                 col = "NFL")) +
+  geom_errorbar(aes(x = data7$monthn[data7$east==1],
+                    ymin = data7$iraqis_spd_clo[data7$east==1], 
+                    ymax = data7$iraqis_spd_chi[data7$east==1]),
+                width = 0.3, col = "blue") +
+  geom_line(aes(x = data7$monthn[data7$east==1], 
+                y =  data7$iraqis_spd[data7$east==1]),
+            col = "blue", lty = 2) +
+  annotate("rect", xmin = 7, xmax = Inf, ymin=0, ymax=Inf, 
+           alpha = 0.3) +
+  scale_y_continuous(limits = c(0,25)) +
+  labs(x = "Monthly Polls 2002", 
+       y = "Most Important Issue (% East German Voters)",
+       title = "Relative Importance of Issues: Elbe Flood versus Iraq in East Germany (NARROW definition)") +
+ scale_x_discrete(breaks = 1:9, 
+                   labels = monthlabs) +
+  scale_color_manual(name="", 
+                        labels = c("Flood", 
+                                   "Iraq"), 
+                        values = c("NFL"="blue", 
+                                   "FL"="black")) +
+  theme_bw()
+```
+
+
+
+
+
+
+
+

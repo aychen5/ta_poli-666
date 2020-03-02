@@ -347,99 +347,115 @@ print(xtable(rosenbaum$bounds, digits = 3, caption = "Rosenbaum p-values"),
 
 - Details in Rosenbaum and Silber (2009).
 
+```{r eval = FALSE, echo = FALSE}
+path <- "/Users/anniechen/Dropbox/psets/PS7"
+child_data <- read.csv(file.path(path, "child_soldiering.csv"))
+
+# our linear model
+mod <- lm(educ ~ abd + age + fthr.ed + mthr.ed + C.ach, data = child_data)
+
+# What is half the magnitude of the treatment coefficient?
+half_beta <- mod$coefficients[2]/2
+
+# values of delta
+delta <- seq(0.001, 1, by = 0.01)
+
+# Solve for gamma
+g <- half_beta/delta
 
 
-```{r echo = FALSE, eval = FALSE}
-# full specification
-mod1 <- lm(educ ~ abd + age + fthr.ed + mthr.ed + C.ach, data = d)
+# estimate a propensity score:
+# P(T|covariates)
+p_mod <- glm(abd ~ age + fthr.ed + mthr.ed + C.ach, data = child_data, 
+             family = binomial(link = "logit"))
+
+
+# Create two dfs for predction: setting residency in Ach to 1 and to 0
+mod_ach1 <- data.frame(model.matrix(p_mod)[, 1:4], C.ach = 1)
+mod_ach0 <- data.frame(model.matrix(p_mod)[, 1:4], C.ach = 0)
+
+# Now, predict
+ps_ach1 <- predict(p_mod, newdata = mod_ach1, type = "response")
+ps_ach0 <- predict(p_mod, newdata = mod_ach0, type = "response")
+
+
+ach_point <- data.frame(delta = mean(ps_ach1) - mean(ps_ach0), 
+                        g = mod$coefficients[6])
+
+
+# plot the point against the curve!
+ggplot(data.frame(delta = delta, g = g), 
+       aes(x = delta, y = g)) +
+  geom_path() + 
+  geom_point(aes(ach_point$delta, ach_point$g)) +
+  xlab(expression(delta)) + ylab(expression(gamma)) +
+  ylim(-5, 0) +
+  theme_bw()
+```
+
+
+```{r}
+library(lm.beta)
+library(reghelper)
+
+# our model of interest
+mod1 <- lm(educ ~ abd + age + fthr.ed + mthr.ed + C.ach, data = child_data)
+
+#reduce the magnitude of the ATE by half
+half_beta_std <- abs(lm.beta(mod1)$standardized.coef[2]/2)
+
+# a vector of delta values
+hyp_delta <- seq(0.001, 1, by = 0.01)
+
+# Solve for gamma
+hyp_gamma <- half_beta_std/hyp_delta
+
 
 # Add covariates as benchmarks to the plot
 # Estimate delta for covariates: fit a propensity score model
-mod.p <- glm(abd ~ age + fthr.ed + mthr.ed + C.ach, data = d, family = binomial(link = "logit"))
+pred_mod <- glm(abd ~ age + fthr.ed + mthr.ed + C.ach, data = child_data, 
+                family = binomial(link = "logit"))
+#pred_mod <- beta(pred_mod)
 
-# Extract the model matrix
-x.mod.p <- model.matrix(mod.p)
+
 # Create a copy of the model matrix in which C.ach is only 1
-x.mod.p.ach1 <- data.frame(x.mod.p[, 1:4], C.ach = 1)
+mod_ach1 <- data.frame(model.matrix(pred_mod)[, 1:4], C.ach = 1)
 # And another where C.ach is only 0
-x.mod.p.ach0 <- data.frame(x.mod.p[, 1:4], C.ach = 0)
+mod_ach0 <- data.frame(model.matrix(pred_mod)[, 1:4], C.ach = 0)
 
 # Get predicted probabilities
-pscore.ach1 <- predict(mod.p, newdata = x.mod.p.ach1, type = "response")
-pscore.ach0 <- predict(mod.p, newdata = x.mod.p.ach0, type = "response")
+pscore_ach1 <- predict(pred_mod, newdata = mod_ach1)
+pscore_ach0 <- predict(pred_mod, newdata = mod_ach0)
 
-# The difference in means is the change in propensity from
-# having C.ach=1 instead of C.ach=0, conditional on other
-# covariates
-delta.ach <- mean(pscore.ach1) - mean(pscore.ach0)
-ach.point <- data.frame(delta = delta.ach, g = mod1$coefficients[6])
+# The difference in means is the change in propensity from two vals
+# set C.ach=1 instead of C.ach=0, conditional on other covariates
+delta_ach <- abs(mean(pscore_ach1) - mean(pscore_ach0))
+ach_point <- data.frame(delta = delta_ach, 
+                        g = abs(lm.beta(mod)$standardized.coef[6]))
 
-# do the same process for Age
-summary(d$age) # Q1:age = 17 and Q3:age=25
+# age change
+mod_age17 <- data.frame(model.matrix(pred_mod)[, c(1, 3:5)], age = 17)
+mod_age25 <- data.frame(model.matrix(pred_mod)[, c(1, 3:5)], age = 25)
+
+# Get predicted probabilities
+pscore_age17 <- predict(pred_mod, newdata = mod_age17)
+pscore_age25 <- predict(pred_mod, newdata = mod_age25)
+delta_age <- abs(mean(pscore_age17) - mean(pscore_age25))
+age_point <- data.frame(delta = delta_age,
+                        g = abs(lm.beta(mod1)$standardized.coef[3]))
+
+
+
+ggplot(data.frame(delta = hyp_delta, 
+                  g = hyp_gamma), 
+       aes(x = delta, y = g)) +
+  geom_path() + 
+  geom_point(aes(ach_point$delta, ach_point$g)) +
+  geom_point(aes(age_point$delta, age_point$g)) +
+  xlab(expression(delta)) + ylab(expression(gamma)) +
+  ylim(0, 5) +
+  theme_bw()
 ```
 
 
-```{r eval = FALSE, echo = FALSE}
-library(ri2)
-
-lalonde_match <- data.frame(Z = matched_gen$mdata$Tr,
-                        Y = matched_gen$mdata$Y)
-
-complete_dec <- declare_ra(N = 370, m = 185)
-
-wilcox_fun <- function(data){
-  wilcox_out <- with(data, wilcox.test(Y ~ Z))
-  wilcox_out$statistic
-}
-
-
-ri_out <-
-  conduct_ri(
-    test_function = wilcox_fun,
-    declaration = complete_dec,
-    sharp_hypothesis = 0.5,
-    data = lalonde_match,
-    sims = 100
-  )
-
-summary(ri_out)
-plot(ri_out)
-```
-
-
-
-
-```{r eval = FALSE, echo = FALSE}
-path <- "/Users/anniechen/Dropbox/psets/PS7"
-d <- read.csv(file.path(path, "child_soldiering.csv"))
-
-# Use the regression estimator
-mod1 <- lm(educ ~ abd + age + fthr.ed + mthr.ed + C.ach, data = d)
-mod1HC2 <- list(coeftest(mod1, vcov = vcovHC(mod1, type = "HC2"))[,
-2])
-
-# What is half the magnitude of the treatment coefficient?
-b.half <- mod1$coefficients[2]/2
-# The range of delta is 0,1
-delta <- seq(0.001, 1, by = 0.01)
-# Solve for gamma
-g <- b.half/delta
-# Make plot
-ggplot(data.frame(delta = delta, g = g), aes(x = delta, y = g)) +
-geom_path() + xlab(expression(delta)) + ylab(expression(gamma)) +
-ylim(-3, 0)
-
-### OR.....
-#Create a contour plot of the bias that would reduce themagnitude of the ATE by hal
-b.half <- abs(lm.beta(mod1)$standardized.coef[2]/2)
-
-# The range of delta is 0,1 because delta = Pr(Ui = 1|Di = 1)−Pr(Ui = 1|Di = 0)
-delta <- seq(0.001, 1, by = 0.01)
-
-# Solve for gamma. E[Yi|Ui =1]−E[Yi|Ui =0]
-g <- b.half/delta
-
-##These are the values of delta and gamma that would cut out ATE in half
-plot(x = delta, y = g, ylim = c(0,1), xlim = c(0,1), type='l')
-```
 

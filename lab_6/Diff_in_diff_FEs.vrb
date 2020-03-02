@@ -1,0 +1,35 @@
+\frametitle{Parallel Trends Assumption}
+
+\begin{itemize}[<+->]
+\item
+  \(\mathbb{E}[Y_{i1}(0) - Y_{i0}(0)| D_i = 1] = \mathbb{E}[Y_{i1}(0) - Y_{i0}(0)| D_i = 0]\)
+\item
+  Check \color{blue}{leads}\color{black}{: 1994 - 1998}
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{all_data }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{filter}\NormalTok{(data_period }\OperatorTok{==}\StringTok{ "1994–1998"}\NormalTok{) }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{plm}\NormalTok{(}\DataTypeTok{data =}\NormalTok{ ., }\DataTypeTok{index =} \KeywordTok{c}\NormalTok{(}\StringTok{"wkr"}\NormalTok{), }
+    \DataTypeTok{model =} \StringTok{"fd"}\NormalTok{, }
+    \DataTypeTok{formula =}\NormalTok{ spd_z_vs }\OperatorTok{~}\StringTok{ }\NormalTok{Flooded }\OperatorTok{*}\StringTok{ }\NormalTok{PostPeriod)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##
+## Model Formula: spd_z_vs ~ Flooded * PostPeriod
+## <environment: 0x7fed44820078>
+##
+## Coefficients:
+## (Intercept)     Flooded
+##  4.61036210 -0.00040711
+\end{verbatim}
+
+\begin{itemize}[<+->]
+\tightlist
+\item
+  The more pre-treatment periods the better!
+\end{itemize}
+
